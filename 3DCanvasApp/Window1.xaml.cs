@@ -68,7 +68,7 @@ namespace Canvas3DViewer
                 if (moves == null) return;
 
                 centerRotation = programContext.CenterRotationPoint;
-
+                
                 foreach (var item in moves)
                 {
                     if (item.IsBeamOn == false)

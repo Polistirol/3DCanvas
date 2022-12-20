@@ -30,6 +30,7 @@ namespace ParserLib.Models
 
         public Point3D CenterRotationPoint { get; set; }
 
+
         public int SourceLine { get; set; }
         public bool IsIncremental { get; set; }
         public bool InMainProgram { get; set; }
@@ -41,6 +42,7 @@ namespace ParserLib.Models
         public bool IsTubeProgram { get; set; }
         public bool IsWeldProgram { get; set; }
         public IList<IBaseEntity> Moves { get; set; }
+        public IRotoTranslation RotoTranslation { get; set; }
 
         public void UpdateProgramCenterPoint()
         {

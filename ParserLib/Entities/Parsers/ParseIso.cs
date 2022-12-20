@@ -6,12 +6,17 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Services.Description;
 using System.Windows.Media.Media3D;
 using static ParserLib.Helpers.GeoHelper;
 using static ParserLib.Helpers.TechnoHelper;
+using static ParserLib.Helpers.RototranslationHelper;
+using System.Runtime.InteropServices;
+using System.Windows.Documents;
+using System.Security.Cryptography;
 
 namespace ParserLib.Services.Parsers
 {
@@ -58,7 +63,10 @@ namespace ParserLib.Services.Parsers
                     EndPoint = new Point3D(0, 0, 0),
                 },
 
-                LastHeadPosition = new Point3D(0, 0, 0)
+                RotoTranslation = new RotoTranslation(),
+
+
+                
             };
 
             programContext.Moves = GetMoves(programContext);
@@ -414,7 +422,6 @@ namespace ParserLib.Services.Parsers
                         //if (m.Count == 1) return;
                         entity = new LinearMove { OriginalLine = line };
                         entity = CalculateStartAndEndPoint(programContext, entity, m);
-
                         break;
 
                     case 2:
@@ -425,12 +432,29 @@ namespace ParserLib.Services.Parsers
                         break;
 
                     case 3:
+                        // cointer-clockwise turn
+                        // g03 Xend yEnd zEnd I J K center relative to startpoint
                         entity = new ArcMove { OriginalLine = line };
                         entity = CalculateG02G03(programContext, entity, m, false);
                         break;
 
                     case 92:
+                        break;
                     case 93:
+                        //sets new rototraslation, overreides previous one, if empty resets all rototraslations
+                        Vector3D newTranslationComponents = CalculateNewTranslationVector(m);
+                        Translation newTranslation = new Translation(true);
+                        newTranslation.UpdateComponents(newTranslationComponents);
+                        programContext.RotoTranslation.UpdateTranslation(newTranslation);
+                        break;
+                        
+                    case 94:
+                        //set additive rototraslation, if empy resets only additive rototraslations
+                        Vector3D _newTranslationComponents = CalculateNewTranslationVector(m);
+                        Translation _newTranslation = new Translation(false);
+                        _newTranslation.UpdateComponents(_newTranslationComponents);
+                        programContext.RotoTranslation.UpdateTranslation(_newTranslation);
+                        break;
                     case 113:
 
                         var refMove = programContext.ReferenceMove != null ? programContext.ReferenceMove : new LinearMove();
@@ -467,6 +491,15 @@ namespace ParserLib.Services.Parsers
                 }
             }
             //}
+        }
+
+
+        private Vector3D  CalculateNewTranslationVector( MatchCollection regexMatches)
+        {
+            var axesDictionary = GetValuesFromLine(regexMatches);
+            Vector3D newTranslationVector = RototranslationHelper.CalculateNewTranslation(axesDictionary);          
+            return newTranslationVector;
+            
         }
 
         private IBaseEntity CalculateG02G03(ProgramContext programContext, IBaseEntity entity, MatchCollection regexMatches, bool isClockwise)
@@ -596,18 +629,12 @@ namespace ParserLib.Services.Parsers
 
                 var radius = Converter(macroParFounded[6].Value);
 
-                //entity = new ArcMove
-                //{
-                //    IsStroked = true,
-                //    IsLargeArc = true,
-                //    SourceLine = programContext.SourceLine,
-                //    IsBeamOn = programContext.IsBeamOn,
-                //    LineColor = programContext.ContourLineType,
-                //    OriginalLine = line,
-                //    Radius = Math.Abs(radius),//Aggiunto math.abs perchè... Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
-                //    CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC),
-                //    NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                //};
+                //add transaltion
+                //pC = RototranslationHelper.AddTranslation(pC, programContext);
+                //pN = RototranslationHelper.AddTranslation(pN, programContext);
+                
+                
+
                 entity = new HoleMoves
                 {   
                     SourceLine = programContext.SourceLine,
@@ -659,7 +686,9 @@ namespace ParserLib.Services.Parsers
                 Point3D pN = new Point3D(nX, nY, nZ);
 
                 var radius = Converter(macroParFounded[9].Value);
-
+                //pC1 = RototranslationHelper.AddTranslation(pC1, programContext);
+                //pC2 = RototranslationHelper.AddTranslation(pC2, programContext);
+                //pN = RototranslationHelper.AddTranslation(pN, programContext);
                 entity = new SlotMove()
                 {
                     SourceLine = programContext.SourceLine,
@@ -743,6 +772,9 @@ namespace ParserLib.Services.Parsers
                 var radius1 = Converter(macroParFounded[9].Value);
                 var radius2 = Converter(macroParFounded[10].Value);
 
+                //pC1 = RototranslationHelper.AddTranslation(pC1, programContext);
+                //pC2 = RototranslationHelper.AddTranslation(pC2, programContext);
+                //pN = RototranslationHelper.AddTranslation(pN, programContext);
 
                 entity = new KeyholeMoves()
                 {
@@ -829,7 +861,9 @@ namespace ParserLib.Services.Parsers
                 int.TryParse(macroParFounded[9].Value, out int sides);
 
                 var radius = (macroParFounded.Count < 11) ? 0.0 : Converter(macroParFounded[10].Value);
-
+                //vertexPoint = RototranslationHelper.AddTranslation(vertexPoint, programContext);
+                //normalPoint = RototranslationHelper.AddTranslation(normalPoint, programContext);
+                //centerPoint = RototranslationHelper.AddTranslation(centerPoint, programContext);
                 entity = new PolyMoves()
                 {
                     SourceLine = programContext.SourceLine,
@@ -872,6 +906,10 @@ namespace ParserLib.Services.Parsers
                 var sZ = Converter(macroParFounded[8].Value);
                 Point3D sidePoint = new Point3D(sX, sY, sZ);
 
+                //vertexPoint = RototranslationHelper.AddTranslation(vertexPoint, programContext);
+                //sidePoint = RototranslationHelper.AddTranslation(sidePoint, programContext);
+                //centerPoint = RototranslationHelper.AddTranslation(centerPoint, programContext);
+
                 entity = new RectMoves()
                 {
                     SourceLine = programContext.SourceLine,
@@ -909,11 +947,13 @@ namespace ParserLib.Services.Parsers
                 var X = Converter(macroParFounded[0].Value);
                 var Y = Converter(macroParFounded[1].Value);
                 var Z = Converter(macroParFounded[2].Value);
+                Point3D target = new Point3D(X, Y, Z);
+                target = RototranslationHelper.AddTranslation(target, programContext);
 
                 entity = new LinearMove()
                 {
                     StartPoint = programContext.LastHeadPosition,
-                    EndPoint = new Point3D(X, Y, Z),
+                    EndPoint = target,
                     SourceLine = programContext.SourceLine,
                     IsBeamOn = false,
                     LineColor = ELineType.Rapid,
@@ -946,6 +986,46 @@ namespace ParserLib.Services.Parsers
 
             return lineToClean.Trim();
         }
+        /// <summary>
+        /// Takes the regex findings and returns a sorted dict of the axes values
+        /// </summary>
+        private SortedDictionary<char,double?> GetValuesFromLine(MatchCollection matches)
+        {
+            SortedDictionary<char, double?> output = new SortedDictionary<char, double?>()
+            {
+                {'X', null},
+                {'Y', null},
+                {'Z', null},
+                {'A', null},
+                {'B', null},
+                {'C', null},
+            };
+
+            for (int i = 1; i < matches.Count; i++)
+            {
+                var ax = matches[i].ToString();
+                char axName = ax[0];
+                if (output.ContainsKey(axName))
+                {
+                    var axValue = ax.Substring(1);
+
+                    if (axValue.Contains("="))
+                        axValue = axValue.Replace("=", "");
+
+                    if (char.IsLetter(axValue[0]) == true) axValue = "0";
+
+                    var axValueD = GetQuotaValue(axValue);
+                    output[axName] = axValueD;
+                }
+                else continue;
+            }
+            var keys = output.Keys.ToList();
+            foreach (var key in keys)
+            {
+                if (!output[key].HasValue) output.Remove(key);
+            }
+            return output;
+        }
 
         private void BuildMove(ref IBaseEntity entity, MatchCollection matches, ProgramContext programContext)
         {
@@ -956,6 +1036,7 @@ namespace ParserLib.Services.Parsers
             for (int i = 1; i < n; i++)
             {
                 var ax = matches[i].ToString();
+
 
                 char axName = ax[0];
 
@@ -1013,6 +1094,40 @@ namespace ParserLib.Services.Parsers
 
         private double GetQuotaValue(string axValue, ProgramContext programContext)
         {
+            if (double.TryParse(axValue, out var quota))
+            {
+                return Converter(quota);
+            }
+            else
+            {
+                //if (axValue.Contains("#"))
+                //{
+                //    var searchingForLabel = int.Parse(Regex.Match(axValue, @"\d+\.+\d+").Value);
+                //}
+
+                bool result = axValue.Any(x => !char.IsLetter(x));
+
+                if (result)
+                {
+                    string formula = axValue;
+                    var eval = StringToFormula.Eval(formula);
+                    return Converter(eval);
+                }
+            }
+
+            if (axValue == "MVX" || axValue == "MVY" || axValue == "MVZ")
+            {
+                return 0.0;
+            }
+
+            if (axValue.Contains("P") || axValue.Contains("LV"))
+            {
+            }
+            return double.Parse(axValue);
+        }
+        private double GetQuotaValue(string axValue)
+        {
+            //overload of GetQuotaValue senza Progcontext..era usato ?
             if (double.TryParse(axValue, out var quota))
             {
                 return Converter(quota);

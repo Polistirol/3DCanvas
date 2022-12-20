@@ -11,6 +11,11 @@ namespace ParserLib.Interfaces
         Point3D CenterRotationPoint { get; set; }
         Point3D LastHeadPosition { get; set; }
 
+        IRotoTranslation RotoTranslation { get; set; }
+
+ 
+        
+
         bool Is3DProgram { get; set; }
         bool Is2DProgram { get; set; }
         bool IsTubeProgram { get; set; }
@@ -26,5 +31,6 @@ namespace ParserLib.Interfaces
         IList<IBaseEntity> Moves { get; set; }
 
         void UpdateProgramCenterPoint();
+
     }
 }

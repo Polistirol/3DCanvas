@@ -1,4 +1,7 @@
-﻿namespace ParserLib.Helpers
+﻿using System.Collections.Generic;
+using System.Collections.Specialized;
+
+namespace ParserLib.Helpers
 {
     public static class TechnoHelper
     {
@@ -26,5 +29,9 @@
             Keyhole,
             Hole
         }
+ 
+
+
+
     }
 }
