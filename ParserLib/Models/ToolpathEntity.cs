@@ -1,12 +1,13 @@
 ﻿using ParserLib.Helpers;
 using ParserLib.Interfaces;
 using System;
+using System.Security.Policy;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
 
 namespace ParserLib.Models
 {
-    public abstract class Entity : ViewModelBase, IEntity
+    public abstract class ToolpathEntity : ViewModelBase, IToolpathEntity
     {
         private Point3D _endPoint;
         private Point3D _startPoint;
@@ -26,6 +27,7 @@ namespace ParserLib.Models
         public bool IsBeamOn { get; set; }
         public bool Is2DProgram { get; set; }
         public string OriginalLine { get; set; }
+        public bool IsLeadIn { get; set; }
 
         public abstract void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius);
     }

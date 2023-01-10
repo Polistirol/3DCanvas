@@ -1,4 +1,5 @@
 ﻿using ParserLib.Interfaces;
+using ParserLib.Interfaces.Macros;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -23,8 +24,8 @@ namespace ParserLib.Models
 
 
 
-        public IEntity ReferenceMove { get; set; }
-        public IEntity LastEntity { get; set; }
+        public IToolpathEntity ReferenceMove { get; set; }
+        public IToolpathEntity LastEntity { get; set; }
         public ELineType ContourLineType { get; set; }
         public Point3D LastHeadPosition { get; set; }
 
@@ -48,49 +49,57 @@ namespace ParserLib.Models
         {
             if (LastEntity != null && IsBeamOn)
             {
-                if (LastEntity.EntityType == EEntityType.Poly)
+                if (LastEntity is IMacro macro)
                 {
-                    var poly = LastEntity as IPoly;
-
-                    foreach (var item in poly.Lines)
+                    foreach (var item in macro.Movements)
                     {
                         CalculateMinMaxFromBaseEntity(item);
                     }
                 }
-                else if (LastEntity.EntityType == EEntityType.Rect)
-                {
-                    var rect = LastEntity as RectMoves;
 
-                    foreach (var item in rect.Lines)
-                    {
-                        CalculateMinMaxFromBaseEntity(item);
-                    }
-                }
-                else if (LastEntity.EntityType == EEntityType.Slot)
-                {
-                    var slot = LastEntity as ISlot;
+                //    if (LastEntity.EntityType == EEntityType.Poly)
+                //{
+                //    var poly = LastEntity as IPoly;
 
-                    CalculateMinMaxFromBaseEntity(slot.Arc1);
-                    CalculateMinMaxFromBaseEntity(slot.Arc2);
-                    CalculateMinMaxFromBaseEntity(slot.Line1);
-                    CalculateMinMaxFromBaseEntity(slot.Line2);
-                }
-                else if (LastEntity.EntityType == EEntityType.Keyhole)
-                {
-                    var keyHole = LastEntity as IKeyhole;
+                //    foreach (var item in poly.Lines)
+                //    {
+                //        CalculateMinMaxFromBaseEntity(item);
+                //    }
+                //}
+                //else if (LastEntity.EntityType == EEntityType.Rect)
+                //{
+                //    var rect = LastEntity as RectMoves;
 
-                    CalculateMinMaxFromBaseEntity(keyHole.Arc1);
-                    CalculateMinMaxFromBaseEntity(keyHole.Arc2);
-                    CalculateMinMaxFromBaseEntity(keyHole.Line1);
-                    CalculateMinMaxFromBaseEntity(keyHole.Line2);
-                }                
-                else if (LastEntity.EntityType == EEntityType.Hole)
-                {
-                    var hole = LastEntity as IHole;
+                //    foreach (var item in rect.Lines)
+                //    {
+                //        CalculateMinMaxFromBaseEntity(item);
+                //    }
+                //}
+                //else if (LastEntity.EntityType == EEntityType.Slot)
+                //{
+                //    var slot = LastEntity as ISlot;
 
-                    CalculateMinMaxFromBaseEntity(hole.Circle);
+                //    CalculateMinMaxFromBaseEntity(slot.Arc1);
+                //    CalculateMinMaxFromBaseEntity(slot.Arc2);
+                //    CalculateMinMaxFromBaseEntity(slot.Line1);
+                //    CalculateMinMaxFromBaseEntity(slot.Line2);
+                //}
+                //else if (LastEntity.EntityType == EEntityType.Keyhole)
+                //{
+                //    var keyHole = LastEntity as IKeyhole;
 
-                }
+                //    CalculateMinMaxFromBaseEntity(keyHole.Arc1);
+                //    CalculateMinMaxFromBaseEntity(keyHole.Arc2);
+                //    CalculateMinMaxFromBaseEntity(keyHole.Line1);
+                //    CalculateMinMaxFromBaseEntity(keyHole.Line2);
+                //}                
+                //else if (LastEntity.EntityType == EEntityType.Hole)
+                //{
+                //    var hole = LastEntity as IHole;
+                //    //CalculateMinMaxFromBaseEntity(hole.Circle);
+                //    CalculateMinMaxFromBaseEntity(hole.Movements[1] as IArc);
+
+                //}
                 else
                 {
                     CalculateMinMaxFromBaseEntity(LastEntity);
@@ -100,7 +109,7 @@ namespace ParserLib.Models
             }
         }
 
-        private void CalculateMinMaxFromBaseEntity(IEntity BaseEntity)
+        private void CalculateMinMaxFromBaseEntity(IToolpathEntity BaseEntity)
         {
             xMin = Math.Min(BaseEntity.StartPoint.X, xMin);
             xMin = Math.Min(BaseEntity.EndPoint.X, xMin);

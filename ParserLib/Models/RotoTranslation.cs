@@ -1,50 +1,57 @@
 ﻿using ParserLib.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
+using System.Data.SqlClient;
 using System.Windows.Media.Media3D;
 
 namespace ParserLib.Models
 {
     public class RotoTranslation : IRotoTranslation
     {
-        public Translation ActiveTranslation { get; set; }
-        public Vector3D TransLocalComponents { get; set; }
-        public Vector3D TransGlobalComponents { get; set; }
 
-        public RotoTranslation()
+
+
+        public RotoTranslation() { }
+       
+
+        public Vector3D LocalTranslationComponents { get; set; } = new Vector3D( 0, 0, 0 );
+        public Vector3D GlobalTranslationComponents { get; set; } = new Vector3D(0, 0, 0);
+        public Vector3D ActiveTranslationComponents { get; set; } = new Vector3D(0, 0, 0);
+        public Vector3D LocalRotationComponents { get; set; } = new Vector3D(0, 0, 0);
+        public Vector3D GlobalRotationComponents { get; set; } = new Vector3D(0, 0, 0);
+        public Vector3D ActiveRotationComponents { get; set; } = new Vector3D(0, 0, 0);
+
+        public void UpdateRotation(Vector3D newRotation, bool isGlobal = true)
         {
-            ActiveTranslation = new Translation(true)
+            if (isGlobal) //G93
             {
-                Components = new Vector3D(0, 0, 0)
-            };
-        }
-        public void UpdateTranslation(Translation translation)
-        {
-            if (translation.isGlobal)
-            {
-                TransGlobalComponents = translation.Components;
+                LocalRotationComponents = new Vector3D(0, 0, 0);
+                GlobalRotationComponents = new Vector3D(newRotation.X, newRotation.Y, newRotation.Z);
             }
-            else
+            else //G94
             {
-                if (translation.Components.X == 0 && translation.Components.Y == 0 && translation.Components.Z == 0)
-                {
-
-                    TransLocalComponents = new Vector3D(0,0,0);
-                }
-                else
-                {
-                    TransLocalComponents = Vector3D.Add(TransLocalComponents, translation.Components);
-                }
+                LocalRotationComponents = Vector3D.Add(LocalRotationComponents, newRotation);
 
             }
-
-            ActiveTranslation.Components= Vector3D.Add(TransGlobalComponents,TransLocalComponents);
+            ActiveRotationComponents = Vector3D.Add(LocalRotationComponents, GlobalRotationComponents);
         }
 
 
+
+        public void UpdateTranslation(Vector3D newTranslation, bool isGlobal = true)
+        {
+            if (isGlobal) //G93
+            {               
+                LocalTranslationComponents = new Vector3D(0, 0, 0);
+                GlobalTranslationComponents = new Vector3D(newTranslation.X, newTranslation.Y, newTranslation.Z);
+            }
+            else //G94
+            {
+                
+                LocalTranslationComponents = Vector3D.Add(  LocalTranslationComponents , newTranslation);
+
+            }
+            ActiveTranslationComponents = Vector3D.Add(LocalTranslationComponents,GlobalTranslationComponents);
+
+            
+        }
     }
 }

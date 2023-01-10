@@ -7,7 +7,7 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Models
 {
-    public class CircularEntity : Entity, IArc
+    public class CircularEntity : ToolpathEntity, IArc
     {
         public bool IsStroked { get; set; }
 

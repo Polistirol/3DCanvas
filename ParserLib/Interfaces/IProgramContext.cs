@@ -6,8 +6,8 @@ namespace ParserLib.Interfaces
 {
     public interface IProgramContext
     {
-        IEntity ReferenceMove { get; set; }
-        IEntity LastEntity { get; set; }
+        IToolpathEntity ReferenceMove { get; set; }
+        IToolpathEntity LastEntity { get; set; }
         Point3D CenterRotationPoint { get; set; }
         Point3D LastHeadPosition { get; set; }
 

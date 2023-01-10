@@ -3,7 +3,7 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Interfaces
 {
-    public interface IBaseEntity
+    public interface IBaseEntity : IRenderable
     {
         ELineType LineColor { get; set; }//Line color is an int that rappresent the integer value of the line 1:Green 2:Blue 3:Red
 
@@ -17,6 +17,6 @@ namespace ParserLib.Interfaces
 
         string OriginalLine { get; set; }
 
-        void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius);
+        //void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius);
     }
 }

@@ -3,6 +3,7 @@ using Canvas3DViewer.Models;
 using Canvas3DViewer.ViewModels;
 using ParserLib;
 using ParserLib.Interfaces;
+using ParserLib.Interfaces.Macros;
 using ParserLib.Models;
 using ParserLib.Services.Parsers;
 using System;
@@ -80,7 +81,17 @@ namespace Canvas3DViewer
                     }
                     else
                     {
-                        if (item.EntityType == EEntityType.Line)
+                        if (item is IMacro macro)
+                        {
+                            foreach(var move in macro.Movements)
+                            {
+                                if (move is LinearMove)
+                                    DrawLine(move as LinearMove);
+                                else
+                                    DrawArc(move as ArcMove);
+                            }
+                        }
+                        else if (item.EntityType == EEntityType.Line)
                         {
                             DrawLine(item as LinearMove);
                         }
@@ -88,51 +99,7 @@ namespace Canvas3DViewer
                         {
                             DrawArc(item as ArcMove);
                         }                        
-                        else if (item.EntityType == EEntityType.Hole)
-                        {
-                            var hole = item as HoleMoves;
-                            DrawLine(hole.LeadIn as LinearMove);
-                            DrawArc(hole.Circle as ArcMove);
-                            
-                        }
-                        else if (item.EntityType == EEntityType.Slot)
-                        {
-                            var slot = item as SlotMove;
 
-                            DrawLine(slot.LeadIn as LinearMove);
-                            DrawArc(slot.Arc1 as ArcMove);
-                            DrawLine(slot.Line1 as LinearMove);
-                            DrawArc(slot.Arc2 as ArcMove);
-                            DrawLine(slot.Line2 as LinearMove);
-                        }
-                        else if (item.EntityType == EEntityType.Keyhole)
-                        {
-                            var keyhole = item as KeyholeMoves;
-                            DrawLine(keyhole.LeadIn as LinearMove);
-                            DrawArc(keyhole.Arc1 as ArcMove);
-                            DrawLine(keyhole.Line1 as LinearMove);
-                            DrawArc(keyhole.Arc2 as ArcMove);
-                            DrawLine(keyhole.Line2 as LinearMove);
-                        }
-                        else if (item.EntityType == EEntityType.Poly)
-                        {
-                            var poly = item as PolyMoves;
-
-                            DrawLine(poly.LeadIn as LinearMove);
-                            foreach (var l in poly.Lines)
-                            {
-                                DrawLine(l as LinearMove);
-                            }
-                        }
-                        else if (item.EntityType == EEntityType.Rect)
-                        {
-                            var rect = item as RectMoves;
-                            DrawLine(rect.LeadIn as LinearMove);
-                            foreach (var l in rect.Lines)
-                            {
-                                DrawLine(l as LinearMove);
-                            }
-                        }
                     }
                 }
                 st.Stop();
@@ -266,7 +233,7 @@ namespace Canvas3DViewer
             foreach (var item in moves)
             {
                 if (!item.IsBeamOn) { continue; }
-                var entity = (item as IEntity);
+                var entity = item; //(item as IToolpathEntity);
                 if (double.IsNegativeInfinity(entity.BoundingBox.Item1) || double.IsInfinity(entity.BoundingBox.Item2) || double.IsNegativeInfinity(entity.BoundingBox.Item3) || double.IsInfinity(entity.BoundingBox.Item4))
                     continue;
 
@@ -359,9 +326,9 @@ namespace Canvas3DViewer
         {
             var p = ((Path)sender);
 
-            if (p.Tag != null && p.Tag is IEntity)
+            if (p.Tag != null && p.Tag is IToolpathEntity)
             {
-                var entity = (p.Tag as IEntity);
+                var entity = (p.Tag as IToolpathEntity);
 
                 txtLine.Text = entity.OriginalLine.ToString();
                 txtLineNumber.Text = $"Source line: {entity.SourceLine.ToString()}";

@@ -1,9 +1,6 @@
 ﻿using ParserLib.Models;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
 
 namespace ParserLib.Helpers
@@ -11,31 +8,61 @@ namespace ParserLib.Helpers
     public static class RototranslationHelper
     {
 
-        public static Vector3D CalculateNewTranslation(SortedDictionary<char, double?> axesDict)
-        {
-            Vector3D translationFromDict = new Vector3D(0,0,0);
-            if (axesDict.ContainsKey('X')) translationFromDict.X = axesDict['X'] ?? 0;
-            if (axesDict.ContainsKey('Y')) translationFromDict.Y = axesDict['Y'] ?? 0;
-            if (axesDict.ContainsKey('Z')) translationFromDict.Z = axesDict['Z'] ?? 0;
-            return translationFromDict;
-        }
 
         public static void AddTranslation( ref List<Point3D> points,ProgramContext programContext)
         {
 
-            Vector3D components = programContext.RotoTranslation.ActiveTranslation.Components;
+            Vector3D components = programContext.RotoTranslation.ActiveTranslationComponents;
             for (int i = 0; i < points.Count; i++)
             {
                 points[i] = Point3D.Add(points[i], components);
             }
 
         }        
-        public static Point3D AddTranslation( Point3D point,ProgramContext programContext)
+        public static Point3D TranslatePoint( Point3D point,ProgramContext programContext)
         {
+             return TranslatePoint(point,programContext.RotoTranslation.ActiveTranslationComponents );
+        }
+        public static Point3D TranslatePoint(Point3D point, Vector3D vector)
+        {
+            return Point3D.Add(point, vector);
+        }
+        public static Point3D RotatePoint(ProgramContext programContext, Point3D point)
+        {
+            Vector3D rotation = programContext.RotoTranslation.ActiveRotationComponents;
+            double alpha = rotation.X * Math.PI / 180;
+            double beta = rotation.Y * Math.PI / 180;
+            double gamma = rotation.Z * Math.PI / 180;
 
-             return Point3D.Add(point,programContext.RotoTranslation.ActiveTranslation.Components );
+            double x1 = point.X * Math.Cos(alpha)- point.Y*Math.Sin(alpha);
+            double y1 = point.X * Math.Sin(alpha) + point.Y*Math.Cos(alpha);
+            
+            double x2 = x1 *Math.Cos(beta)- point.Z*Math.Sin(beta);
+            double z2 = x1 *Math.Sin(beta)+ point.Z*Math.Cos(beta);
 
+            double y3 = y1 *Math.Cos(gamma)- z2*Math.Sin(gamma);
+            double z3 = x1 *Math.Sin(gamma) + z2*Math.Cos(gamma);
+
+            return new Point3D(x2, y3, z3);
 
         }
+
+        public static Point3D GetRotoTranslatedPoint(ProgramContext programContext, double X, double Y, double Z)
+        {
+            return GetRotoTranslatedPoint(programContext, new Point3D(X, Y, Z));
+
+        }
+
+        public static Point3D GetRotoTranslatedPoint(ProgramContext programContext, Point3D point)
+        {
+            Point3D initialPoint = point;
+            Point3D rotated = RotatePoint(programContext,initialPoint) ;
+            Point3D translated = TranslatePoint(rotated, programContext);
+            
+            return translated;
+        }
+
+         
+
     }
 }

@@ -3,7 +3,7 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Models
 {
-    public class LinearMove : Entity
+    public class LinearMove : ToolpathEntity
     {
         public override EEntityType EntityType { get => EEntityType.Line; }
 

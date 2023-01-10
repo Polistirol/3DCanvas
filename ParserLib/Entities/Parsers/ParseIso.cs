@@ -17,6 +17,8 @@ using static ParserLib.Helpers.RototranslationHelper;
 using System.Runtime.InteropServices;
 using System.Windows.Documents;
 using System.Security.Cryptography;
+using ParserLib.Interfaces.Macros;
+using ParserLib.Models.Macros;
 
 namespace ParserLib.Services.Parsers
 {
@@ -66,7 +68,7 @@ namespace ParserLib.Services.Parsers
                 RotoTranslation = new RotoTranslation(),
 
 
-                
+
             };
 
             programContext.Moves = GetMoves(programContext);
@@ -286,6 +288,7 @@ namespace ParserLib.Services.Parsers
             catch (Exception ex)
             {
                 Console.WriteLine("Error... " + ex.Message);
+                
             }
             finally
             {
@@ -299,12 +302,13 @@ namespace ParserLib.Services.Parsers
         private void ParseLine(ref ProgramContext programContext, List<IBaseEntity> moves, string lineString, ref IBaseEntity baseEntity)
         {
             //Stopwatch dt = Stopwatch.StartNew();
+            
 
             if (lineString.StartsWith("$"))
             {
                 ParseMacro(lineString, ref programContext, ref baseEntity);
             }
-            else if (lineString.StartsWith("G") && !lineString.ToUpper().Contains("O") )
+            else if (lineString.StartsWith("G") && !lineString.ToUpper().Contains("O"))
             {
                 ParseGLine(lineString, ref programContext, ref baseEntity);
             }
@@ -313,20 +317,13 @@ namespace ParserLib.Services.Parsers
             {
                 baseEntity.Is2DProgram = programContext.Is2DProgram;
 
-                if (baseEntity.EntityType == EEntityType.Rect)
-                    programContext.LastHeadPosition = (baseEntity as RectMoves).LeadIn.EndPoint;
-                else if (baseEntity.EntityType == EEntityType.Slot)
-                    programContext.LastHeadPosition = (baseEntity as SlotMove).LeadIn.EndPoint;
-                else if (baseEntity.EntityType == EEntityType.Poly)
-                    programContext.LastHeadPosition = (baseEntity as PolyMoves).LeadIn.EndPoint;
-                else if (baseEntity.EntityType == EEntityType.Keyhole)
-                    programContext.LastHeadPosition = (baseEntity as KeyholeMoves).LeadIn.EndPoint;
-                else if (baseEntity.EntityType == EEntityType.Hole)
-                    programContext.LastHeadPosition = (baseEntity as HoleMoves).LeadIn.EndPoint;
-                else
-                    programContext.LastHeadPosition = (baseEntity as Entity).EndPoint;
+                if (baseEntity is IMacro macro)
+                    programContext.LastHeadPosition = macro.Movements.LastOrDefault(x => x.IsLeadIn).EndPoint;
 
-                programContext.LastEntity = baseEntity as IEntity;
+                else
+                    programContext.LastHeadPosition = (baseEntity as ToolpathEntity).EndPoint;
+
+                programContext.LastEntity = baseEntity as IToolpathEntity;
 
                 programContext.UpdateProgramCenterPoint();
                 moves.Add(baseEntity);
@@ -442,18 +439,16 @@ namespace ParserLib.Services.Parsers
                         break;
                     case 93:
                         //sets new rototraslation, overreides previous one, if empty resets all rototraslations
-                        Vector3D newTranslationComponents = CalculateNewTranslationVector(m);
-                        Translation newTranslation = new Translation(true);
-                        newTranslation.UpdateComponents(newTranslationComponents);
-                        programContext.RotoTranslation.UpdateTranslation(newTranslation);
+                        (Vector3D translationComponents, Vector3D rotationComponents) = GetRotoTranslComponents(m);
+                        programContext.RotoTranslation.UpdateTranslation(translationComponents);
+                        programContext.RotoTranslation.UpdateRotation(rotationComponents);
                         break;
-                        
+
                     case 94:
                         //set additive rototraslation, if empy resets only additive rototraslations
-                        Vector3D _newTranslationComponents = CalculateNewTranslationVector(m);
-                        Translation _newTranslation = new Translation(false);
-                        _newTranslation.UpdateComponents(_newTranslationComponents);
-                        programContext.RotoTranslation.UpdateTranslation(_newTranslation);
+                        (Vector3D _translationComponents, Vector3D _rotationComponents) = GetRotoTranslComponents(m);
+                        programContext.RotoTranslation.UpdateTranslation(_translationComponents,false);
+                        programContext.RotoTranslation.UpdateRotation(_rotationComponents, false);
                         break;
                     case 113:
 
@@ -494,12 +489,21 @@ namespace ParserLib.Services.Parsers
         }
 
 
-        private Vector3D  CalculateNewTranslationVector( MatchCollection regexMatches)
+        private Tuple<Vector3D, Vector3D> GetRotoTranslComponents(MatchCollection regexMatches)
         {
-            var axesDictionary = GetValuesFromLine(regexMatches);
-            Vector3D newTranslationVector = RototranslationHelper.CalculateNewTranslation(axesDictionary);          
-            return newTranslationVector;
-            
+            Dictionary<char, double?> axesDictionary = GetValuesFromLine(regexMatches);
+            //translation
+            Vector3D translationFromDict = new Vector3D(0, 0, 0);
+            if (axesDictionary.ContainsKey('X')) translationFromDict.X = axesDictionary['X'] ?? 0;
+            if (axesDictionary.ContainsKey('Y')) translationFromDict.Y = axesDictionary['Y'] ?? 0;
+            if (axesDictionary.ContainsKey('Z')) translationFromDict.Z = axesDictionary['Z'] ?? 0;
+            //rotation
+            Vector3D rotationFromDict = new Vector3D(0, 0, 0);
+            if (axesDictionary.ContainsKey('A')) rotationFromDict.X = axesDictionary['A'] ?? 0;
+            if (axesDictionary.ContainsKey('B')) rotationFromDict.Y = axesDictionary['B'] ?? 0;
+            if (axesDictionary.ContainsKey('C')) rotationFromDict.Z = axesDictionary['C'] ?? 0;
+            return new Tuple<Vector3D, Vector3D>(translationFromDict, rotationFromDict);
+
         }
 
         private IBaseEntity CalculateG02G03(ProgramContext programContext, IBaseEntity entity, MatchCollection regexMatches, bool isClockwise)
@@ -510,7 +514,7 @@ namespace ParserLib.Services.Parsers
             ArcMove e = (entity as ArcMove);
             e.StartPoint = Create3DPoint(programContext, programContext.LastEntity.EndPoint);
             BuildMove(ref entity, regexMatches, programContext);
-            e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, (entity as IEntity).EndPoint, programContext.IsIncremental ? programContext.LastEntity.EndPoint : new Point3D(0, 0, 0));
+            e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, (entity as IToolpathEntity).EndPoint, programContext.IsIncremental ? programContext.LastEntity.EndPoint : new Point3D(0, 0, 0));
             GeoHelper.Add2DMoveProperties(ref e, isClockwise);
             return e;
         }
@@ -523,19 +527,21 @@ namespace ParserLib.Services.Parsers
 
             entity.LineColor = programContext.ContourLineType;
 
-            IEntity e = (entity as IEntity);
+            IToolpathEntity e = (entity as IToolpathEntity);
 
             e.StartPoint = programContext.LastHeadPosition;//Create3DPoint(programContext, programContext.LastHeadPosition);
 
             BuildMove(ref entity, regexMatches, programContext);
 
-            e.EndPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, e.EndPoint, programContext.IsIncremental ? programContext.LastHeadPosition : new Point3D(0, 0, 0)); //new Point3D(programContext.ReferenceMove.EndPoint.X + entity.EndPoint.X, programContext.ReferenceMove.EndPoint.Y + entity.EndPoint.Y, programContext.ReferenceMove.EndPoint.Z + entity.EndPoint.Z);
+            e.EndPoint = Create3DPoint(programContext, e.EndPoint, programContext.IsIncremental ? programContext.LastHeadPosition : new Point3D(0, 0, 0));
+            if (!programContext.IsIncremental)
+                e.EndPoint = RototranslationHelper.GetRotoTranslatedPoint(programContext, e.EndPoint);
 
             if (entity is ArcMove)
             {
                 var arcMove = (entity as ArcMove);
 
-                arcMove.ViaPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, arcMove.ViaPoint);
+                arcMove.ViaPoint = RototranslationHelper.GetRotoTranslatedPoint(programContext, arcMove.ViaPoint);
 
                 GeoHelper.AddCircularMoveProperties(ref arcMove);
 
@@ -557,7 +563,7 @@ namespace ParserLib.Services.Parsers
             }
             else if (p2 != null)
             {
-                return new Point3D((p1.X + p2.X), (p1.Y + p2.Y),  (p1.Z + p2.Z));
+                return new Point3D((p1.X + p2.X), (p1.Y + p2.Y), (p1.Z + p2.Z));
             }
             else if (p1 != null)
             {
@@ -621,47 +627,48 @@ namespace ParserLib.Services.Parsers
                 var cX = Converter(macroParFounded[0].Value);
                 var cY = Converter(macroParFounded[1].Value);
                 var cZ = Converter(macroParFounded[2].Value);
-                Point3D pC = new Point3D(cX, cY, cZ);
+                Point3D pC = RototranslationHelper.GetRotoTranslatedPoint(programContext, cX, cY, cZ);
                 var nX = Converter(macroParFounded[3].Value);
                 var nY = Converter(macroParFounded[4].Value);
                 var nZ = Converter(macroParFounded[5].Value);
-                Point3D pN = new Point3D(nX, nY, nZ);
+                Point3D pN = RototranslationHelper.GetRotoTranslatedPoint(programContext, nX, nY, nZ);
 
                 var radius = Converter(macroParFounded[6].Value);
 
-                //add transaltion
-                //pC = RototranslationHelper.AddTranslation(pC, programContext);
-                //pN = RototranslationHelper.AddTranslation(pN, programContext);
-                
-                
 
                 entity = new HoleMoves
-                {   
+                {
                     SourceLine = programContext.SourceLine,
                     IsBeamOn = programContext.IsBeamOn,
                     LineColor = programContext.ContourLineType,
                     OriginalLine = line,
-                    Radius= radius,
-                    Circle = new ArcMove
+                    Movements = new List<ToolpathEntity>()
                     {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                        IsStroked = true,
-                        IsLargeArc = false,
-                        Radius = Math.Abs(radius),//Aggiunto math.abs perchè... Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
-                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC),
-                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                    },
-                    LeadIn = new LinearMove {
-                        SourceLine = programContext.SourceLine,
-                        OriginalLine = line,
-                        StartPoint= programContext.LastHeadPosition,
-                    }
-                    
+                        new LinearMove
+                        {
+                            SourceLine = programContext.SourceLine,
+                            OriginalLine = line,
+                            StartPoint = programContext.LastHeadPosition,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            IsLeadIn = true
+                        },
+                        new ArcMove
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                            IsStroked = true,
+                            IsLargeArc = false,
+                            Radius = Math.Abs(radius),//Aggiunto math.abs perchè... Se si vedessero comportamenti strani, verificare che la direzione della normale segua la regola della mano sinistra rispetto al verso di percorrenza dell'arco.
+                            CenterPoint = pC,
+                            NormalPoint = pN,
+                        }
 
+                    }
                 };
+
 
                 var holeMacro = entity as HoleMoves;
                 GeoHelper.GetMoveFromMacroHole(ref holeMacro);
@@ -673,75 +680,77 @@ namespace ParserLib.Services.Parsers
                 var c1X = Converter(macroParFounded[0].Value);
                 var c1Y = Converter(macroParFounded[1].Value);
                 var c1Z = Converter(macroParFounded[2].Value);
-                Point3D pC1 = new Point3D(c1X, c1Y, c1Z);
+                Point3D pC1 = RototranslationHelper.GetRotoTranslatedPoint(programContext, c1X, c1Y, c1Z);
 
                 var c2X = Converter(macroParFounded[3].Value);
                 var c2Y = Converter(macroParFounded[4].Value);
                 var c2Z = Converter(macroParFounded[5].Value);
-                Point3D pC2 = new Point3D(c2X, c2Y, c2Z);
+                Point3D pC2 = RototranslationHelper.GetRotoTranslatedPoint(programContext, c2X, c2Y, c2Z);
 
                 var nX = Converter(macroParFounded[6].Value);
                 var nY = Converter(macroParFounded[7].Value);
                 var nZ = Converter(macroParFounded[8].Value);
-                Point3D pN = new Point3D(nX, nY, nZ);
+                Point3D pN = RototranslationHelper.GetRotoTranslatedPoint(programContext, nX, nY, nZ);
 
                 var radius = Converter(macroParFounded[9].Value);
-                //pC1 = RototranslationHelper.AddTranslation(pC1, programContext);
-                //pC2 = RototranslationHelper.AddTranslation(pC2, programContext);
-                //pN = RototranslationHelper.AddTranslation(pN, programContext);
+
                 entity = new SlotMove()
                 {
                     SourceLine = programContext.SourceLine,
                     IsBeamOn = programContext.IsBeamOn,
                     LineColor = programContext.ContourLineType,
                     OriginalLine = line,
-                    Arc1 = new ArcMove
+                    Movements = new List<ToolpathEntity>()
                     {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                        IsStroked = true,
-                        IsLargeArc = true,
-                        Radius = Math.Abs(radius),
-                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
-                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                    },
-                    Arc2 = new ArcMove
-                    {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                        IsStroked = true,
-                        IsLargeArc = true,
-                        Radius = Math.Abs(radius),
-                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
-                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                    },
-                    Line1 = new LinearMove()
-                    {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                    },
-                    Line2 = new LinearMove()
-                    {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                    },
-                    LeadIn = new LinearMove()
-                    {
-                        SourceLine = programContext.SourceLine,
-                        OriginalLine = line,
-                        StartPoint = programContext.LastHeadPosition,
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            OriginalLine = line,
+                            StartPoint = programContext.LastHeadPosition,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            IsLeadIn = true
 
+                        },
+                        new ArcMove
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                            IsStroked = true,
+                            IsLargeArc = true,
+                            Radius = Math.Abs(radius),
+                            CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
+                            NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                        },
+                        new ArcMove
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                            IsStroked = true,
+                            IsLargeArc = true,
+                            Radius = Math.Abs(radius),
+                            CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
+                            NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                        },
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                        },
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                        },
                     }
-
-                    
                 };
 
                 var slotMove = entity as SlotMove;
@@ -757,76 +766,82 @@ namespace ParserLib.Services.Parsers
                 var c1X = Converter(macroParFounded[0].Value);
                 var c1Y = Converter(macroParFounded[1].Value);
                 var c1Z = Converter(macroParFounded[2].Value);
-                Point3D pC1 = new Point3D(c1X, c1Y, c1Z);
+                Point3D pC1 = RototranslationHelper.GetRotoTranslatedPoint(programContext, c1X, c1Y, c1Z);
 
                 var c2X = Converter(macroParFounded[3].Value);
                 var c2Y = Converter(macroParFounded[4].Value);
                 var c2Z = Converter(macroParFounded[5].Value);
-                Point3D pC2 = new Point3D(c2X, c2Y, c2Z);
+                Point3D pC2 = RototranslationHelper.GetRotoTranslatedPoint(programContext, c2X, c2Y, c2Z);
 
                 var nX = Converter(macroParFounded[6].Value);
                 var nY = Converter(macroParFounded[7].Value);
                 var nZ = Converter(macroParFounded[8].Value);
-                Point3D pN = new Point3D(nX, nY, nZ);
+                Point3D pN = RototranslationHelper.GetRotoTranslatedPoint(programContext, nX, nY, nZ);
 
                 var radius1 = Converter(macroParFounded[9].Value);
                 var radius2 = Converter(macroParFounded[10].Value);
 
-                //pC1 = RototranslationHelper.AddTranslation(pC1, programContext);
-                //pC2 = RototranslationHelper.AddTranslation(pC2, programContext);
-                //pN = RototranslationHelper.AddTranslation(pN, programContext);
 
                 entity = new KeyholeMoves()
                 {
-
+                    Center1 = pC1,
+                    Center2 = pC2,
+                    BigRadius = radius1,
+                    SmallRadius = radius2,
                     SourceLine = programContext.SourceLine,
                     IsBeamOn = programContext.IsBeamOn,
                     LineColor = programContext.ContourLineType,
                     OriginalLine = line,
-                    Arc1 = new ArcMove
-                    {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                        IsStroked = true,
-                        IsLargeArc = true,
-                        Radius = Math.Abs(radius1),
-                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
-                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                    },
-                    Arc2 = new ArcMove
-                    {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                        IsStroked = true,
-                        IsLargeArc = true,
-                        Radius = Math.Abs(radius2),
-                        CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
-                        NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                    },
+                    Movements = new List<ToolpathEntity> {
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            OriginalLine = line,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            StartPoint = programContext.LastHeadPosition,
+                            IsLeadIn = true
 
-                    Line1 = new LinearMove()
-                    {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                    },
-                    Line2 = new LinearMove()
-                    {
-                        SourceLine = programContext.SourceLine,
-                        IsBeamOn = programContext.IsBeamOn,
-                        LineColor = programContext.ContourLineType,
-                        OriginalLine = line,
-                    },
-                    LeadIn = new LinearMove()
-                    {
-                        SourceLine = programContext.SourceLine,
-                        OriginalLine = line,
-                        StartPoint = programContext.LastHeadPosition,
+                        },
+                        new ArcMove
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                            IsStroked = true,
+                            IsLargeArc = true,
+                            Radius = Math.Abs(radius1),
+                            CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
+                            NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                        },
+                        new ArcMove
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                            IsStroked = true,
+                            IsLargeArc = true,
+                            Radius = Math.Abs(radius2),
+                            CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
+                            NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                        },
+
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                        },
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
+                        },
 
                     }
 
@@ -846,24 +861,20 @@ namespace ParserLib.Services.Parsers
                 var c1X = Converter(macroParFounded[0].Value);
                 var c1Y = Converter(macroParFounded[1].Value);
                 var c1Z = Converter(macroParFounded[2].Value);
-                Point3D centerPoint = new Point3D(c1X, c1Y, c1Z);
+                Point3D centerPoint = RototranslationHelper.GetRotoTranslatedPoint(programContext, c1X, c1Y, c1Z);
 
                 var v1X = Converter(macroParFounded[3].Value);
                 var v1Y = Converter(macroParFounded[4].Value);
                 var v1Z = Converter(macroParFounded[5].Value);
-                Point3D vertexPoint = new Point3D(v1X, v1Y, v1Z);
-
+                Point3D vertexPoint = RototranslationHelper.GetRotoTranslatedPoint(programContext, v1X, v1Y, v1Z);
                 var nX = Converter(macroParFounded[6].Value);
                 var nY = Converter(macroParFounded[7].Value);
                 var nZ = Converter(macroParFounded[8].Value);
-                Point3D normalPoint = new Point3D(nX, nY, nZ);
+                Point3D normalPoint = RototranslationHelper.GetRotoTranslatedPoint(programContext, nX, nY, nZ);
 
                 int.TryParse(macroParFounded[9].Value, out int sides);
 
                 var radius = (macroParFounded.Count < 11) ? 0.0 : Converter(macroParFounded[10].Value);
-                //vertexPoint = RototranslationHelper.AddTranslation(vertexPoint, programContext);
-                //normalPoint = RototranslationHelper.AddTranslation(normalPoint, programContext);
-                //centerPoint = RototranslationHelper.AddTranslation(centerPoint, programContext);
                 entity = new PolyMoves()
                 {
                     SourceLine = programContext.SourceLine,
@@ -871,17 +882,23 @@ namespace ParserLib.Services.Parsers
                     LineColor = programContext.ContourLineType,
                     OriginalLine = line,
                     Sides = sides,
-                    Radius = radius,
+
                     VertexPoint = vertexPoint,
                     NormalPoint = normalPoint,
                     CenterPoint = centerPoint,
-                    LeadIn = new LinearMove()
+                    Movements = new List<ToolpathEntity>()
                     {
+                        new LinearMove()
+                        {
                         SourceLine = programContext.SourceLine,
                         OriginalLine = line,
                         StartPoint = programContext.LastHeadPosition,
-
+                        IsLeadIn = true,
+                        IsBeamOn = programContext.IsBeamOn,
+                        LineColor = programContext.ContourLineType,
+                        }
                     }
+
                 };
 
                 var polyMove = entity as PolyMoves;
@@ -894,21 +911,19 @@ namespace ParserLib.Services.Parsers
                 var c1X = Converter(macroParFounded[0].Value);
                 var c1Y = Converter(macroParFounded[1].Value);
                 var c1Z = Converter(macroParFounded[2].Value);
-                Point3D centerPoint = new Point3D(c1X, c1Y, c1Z);
+                Point3D centerPoint = RototranslationHelper.GetRotoTranslatedPoint(programContext, c1X, c1Y, c1Z);
 
                 var v1X = Converter(macroParFounded[3].Value);
                 var v1Y = Converter(macroParFounded[4].Value);
                 var v1Z = Converter(macroParFounded[5].Value);
-                Point3D vertexPoint = new Point3D(v1X, v1Y, v1Z);
+                Point3D vertexPoint = RototranslationHelper.GetRotoTranslatedPoint(programContext, v1X, v1Y, v1Z);
 
                 var sX = Converter(macroParFounded[6].Value);
                 var sY = Converter(macroParFounded[7].Value);
                 var sZ = Converter(macroParFounded[8].Value);
-                Point3D sidePoint = new Point3D(sX, sY, sZ);
+                Point3D sidePoint = RototranslationHelper.GetRotoTranslatedPoint(programContext, sX, sY, sZ);
 
-                //vertexPoint = RototranslationHelper.AddTranslation(vertexPoint, programContext);
-                //sidePoint = RototranslationHelper.AddTranslation(sidePoint, programContext);
-                //centerPoint = RototranslationHelper.AddTranslation(centerPoint, programContext);
+
 
                 entity = new RectMoves()
                 {
@@ -919,13 +934,19 @@ namespace ParserLib.Services.Parsers
                     SidePoint = sidePoint,
                     VertexPoint = vertexPoint,
                     CenterPoint = centerPoint,
-                    LeadIn = new LinearMove()
+                    Movements = new List<ToolpathEntity>()
                     {
-                        SourceLine = programContext.SourceLine,
-                        OriginalLine = line,
-                        StartPoint = programContext.LastHeadPosition,
-
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            OriginalLine = line,
+                            StartPoint = programContext.LastHeadPosition,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            IsLeadIn = true
+                        }
                     }
+
                 };
 
 
@@ -947,8 +968,8 @@ namespace ParserLib.Services.Parsers
                 var X = Converter(macroParFounded[0].Value);
                 var Y = Converter(macroParFounded[1].Value);
                 var Z = Converter(macroParFounded[2].Value);
-                Point3D target = new Point3D(X, Y, Z);
-                target = RototranslationHelper.AddTranslation(target, programContext);
+
+                Point3D target = RototranslationHelper.GetRotoTranslatedPoint(programContext, X, Y, Z);
 
                 entity = new LinearMove()
                 {
@@ -989,9 +1010,9 @@ namespace ParserLib.Services.Parsers
         /// <summary>
         /// Takes the regex findings and returns a sorted dict of the axes values
         /// </summary>
-        private SortedDictionary<char,double?> GetValuesFromLine(MatchCollection matches)
+        private Dictionary<char, double?> GetValuesFromLine(MatchCollection matches)
         {
-            SortedDictionary<char, double?> output = new SortedDictionary<char, double?>()
+            Dictionary<char, double?> output = new Dictionary<char, double?>()
             {
                 {'X', null},
                 {'Y', null},
@@ -999,6 +1020,10 @@ namespace ParserLib.Services.Parsers
                 {'A', null},
                 {'B', null},
                 {'C', null},
+                {'I', null},
+                {'J', null},
+                {'K', null},
+
             };
 
             for (int i = 1; i < matches.Count; i++)
@@ -1084,7 +1109,7 @@ namespace ParserLib.Services.Parsers
                 //}
             }
 
-            (entity as IEntity).EndPoint = endPoint;
+            (entity as IToolpathEntity).EndPoint = endPoint;
 
             if (entity.EntityType == EEntityType.Arc || entity.EntityType == EEntityType.Circle)
             {

@@ -10,6 +10,7 @@ using ParserLib.Helpers;
 using System.Speech.Recognition.SrgsGrammar;
 using System.Windows.Media.Animation;
 using ParserLib.Interfaces;
+using ParserLib.Models.Macros;
 
 namespace ParserLib.Helpers
 {
@@ -140,7 +141,10 @@ namespace ParserLib.Helpers
         {
             //const double alpha = -0.0001745329;
             //Se da fastidio questa tolleranza bisogna introdurre L'elemento ellipse geometry che fà un cerchio
-            CircularEntity circle = hole.Circle;
+
+            LinearMove leadIn = hole.LeadIn as LinearMove;       
+            CircularEntity circle = hole.Movements[1] as CircularEntity ;
+
             double maxClosingGap = 0.01; //mm
             double alpha = -maxClosingGap / hole.Radius;
 
@@ -166,139 +170,147 @@ namespace ParserLib.Helpers
             circle.IsLargeArc = true;
 
             //set LeadIn
-            if (hole.LeadIn.StartPoint != circle.CenterPoint)
+            if (leadIn.StartPoint != circle.CenterPoint)
             {
-                Vector3D centerToApproach = Point3D.Subtract(hole.LeadIn.StartPoint, circle.CenterPoint);
+                Vector3D centerToApproach = Point3D.Subtract(leadIn.StartPoint, circle.CenterPoint);
             
                 var CALenght = centerToApproach.Length;
                 centerToApproach.Normalize();
-                hole.LeadIn.EndPoint = Point3D.Add(hole.LeadIn.StartPoint,centerToApproach * (circle.Radius - CALenght) );
+                leadIn.EndPoint = Point3D.Add(leadIn.StartPoint,centerToApproach * (circle.Radius - CALenght) );
             }
             else
             {
-                hole.LeadIn.EndPoint = circle.StartPoint;
+                leadIn.EndPoint = circle.StartPoint;
             }
 
-            hole.LeadIn.IsBeamOn = circle.IsBeamOn;
-            hole.LeadIn.LineColor = circle.LineColor;
+            
         }
 
         public static void GetMovesFromMacroSlot(ref SlotMove slot)
         {
-            var c1C2Vector = Point3D.Subtract(slot.Arc1.CenterPoint, slot.Arc2.CenterPoint);
+            var Arc1 = slot.Movements[1] as CircularEntity;
+            var Arc2 = slot.Movements[2] as CircularEntity;
+            var Line1 = slot.Movements[3];
+            var Line2 = slot.Movements[4];
 
-            var c2C1Vector = Point3D.Subtract(slot.Arc2.CenterPoint, slot.Arc1.CenterPoint);
+            var c1C2Vector = Point3D.Subtract(Arc1.CenterPoint, Arc2.CenterPoint);
+
+            var c2C1Vector = Point3D.Subtract(Arc2.CenterPoint, Arc1.CenterPoint);
             c2C1Vector.Normalize();
 
-            slot.Arc1.NormalPoint = Point3D.Add(slot.Arc2.NormalPoint, c1C2Vector);
+            Arc1.NormalPoint = Point3D.Add(Arc2.NormalPoint, c1C2Vector);
             c1C2Vector.Normalize();
 
-            var normalVectorC1 = Point3D.Subtract(slot.Arc1.CenterPoint, slot.Arc1.NormalPoint);
+            var normalVectorC1 = Point3D.Subtract(Arc1.CenterPoint, Arc1.NormalPoint);
             normalVectorC1.Normalize();
 
-            var normalVectorC2 = Point3D.Subtract(slot.Arc2.CenterPoint, slot.Arc2.NormalPoint);
+            var normalVectorC2 = Point3D.Subtract(Arc2.CenterPoint, Arc2.NormalPoint);
             normalVectorC2.Normalize();
 
             var cAVersor = Vector3D.CrossProduct(normalVectorC1, c2C1Vector);
             cAVersor.Normalize();
 
-            var cAVector = cAVersor * slot.Arc1.Radius;
-            var arc1StartPoint = slot.Arc1.CenterPoint + cAVector;
+            var cAVector = cAVersor * Arc1.Radius;
+            var arc1StartPoint = Arc1.CenterPoint + cAVector;
 
-            var cBVector = cAVersor * -slot.Arc1.Radius;
-            var arc1EndPoint = slot.Arc1.CenterPoint + cBVector;
+            var cBVector = cAVersor * -Arc1.Radius;
+            var arc1EndPoint = Arc1.CenterPoint + cBVector;
 
-            var arc1ViaPoint = Point3D.Add(slot.Arc1.CenterPoint, c2C1Vector * -slot.Arc1.Radius);
+            var arc1ViaPoint = Point3D.Add(Arc1.CenterPoint, c2C1Vector * -Arc1.Radius);
 
             var cCVersor = Vector3D.CrossProduct(normalVectorC2, c1C2Vector);
             cCVersor.Normalize();
 
-            var cCVector = cCVersor * slot.Arc2.Radius;
-            var arc2StartPoint = slot.Arc2.CenterPoint + cCVector;
+            var cCVector = cCVersor * Arc2.Radius;
+            var arc2StartPoint = Arc2.CenterPoint + cCVector;
 
-            var cDVector = cCVersor * -slot.Arc2.Radius;
-            var arc2EndPoint = slot.Arc2.CenterPoint + cDVector;
+            var cDVector = cCVersor * -Arc2.Radius;
+            var arc2EndPoint = Arc2.CenterPoint + cDVector;
 
-            var arc2ViaPoint = Point3D.Add(slot.Arc2.CenterPoint, c1C2Vector * -slot.Arc2.Radius);
+            var arc2ViaPoint = Point3D.Add(Arc2.CenterPoint, c1C2Vector * -Arc2.Radius);
 
-            slot.Arc1.StartPoint = arc1StartPoint;
-            slot.Arc1.EndPoint = arc1EndPoint;
-            slot.Arc1.ViaPoint = arc1ViaPoint;
-            slot.Arc1.Normal = normalVectorC1;
+            Arc1.StartPoint = arc1StartPoint;
+            Arc1.EndPoint = arc1EndPoint;
+            Arc1.ViaPoint = arc1ViaPoint;
+            Arc1.Normal = normalVectorC1;
 
-            slot.Arc2.StartPoint = arc2StartPoint;
-            slot.Arc2.EndPoint = arc2EndPoint;
-            slot.Arc2.ViaPoint = arc2ViaPoint;
-            slot.Arc2.Normal = normalVectorC2;
+            Arc2.StartPoint = arc2StartPoint;
+            Arc2.EndPoint = arc2EndPoint;
+            Arc2.ViaPoint = arc2ViaPoint;
+            Arc2.Normal = normalVectorC2;
 
-            slot.Line1.StartPoint = slot.Arc1.EndPoint;
-            slot.Line1.EndPoint = slot.Arc2.StartPoint;
+            Line1.StartPoint = Arc1.EndPoint;
+            Line1.EndPoint = Arc2.StartPoint;
 
-            slot.Line2.StartPoint = slot.Arc2.EndPoint;
-            slot.Line2.EndPoint = slot.Arc1.StartPoint;
+            Line2.StartPoint = Arc2.EndPoint;
+            Line2.EndPoint = Arc1.StartPoint;
 
             //lead in
             slot.LeadIn.EndPoint = MathHelpers.GetClosestPoint(slot.LeadIn.StartPoint, new List<Point3D> {
-                slot.Line1.StartPoint,
-                slot.Line1.EndPoint,
-                slot.Line2.StartPoint,
-                slot.Line2.EndPoint,
+                Line1.StartPoint,
+                Line1.EndPoint,
+                Line2.StartPoint,
+                Line2.EndPoint,
 
             });
-            slot.LeadIn.LineColor = slot.Arc1.LineColor;
-            slot.LeadIn.IsBeamOn = slot.Arc1.IsBeamOn;
+
         }
 
         public static void GetMovesFromMacroKeyhole(ref KeyholeMoves keyhole)
         {
-            var c1C2Vector = Point3D.Subtract(keyhole.Arc2.CenterPoint, keyhole.Arc1.CenterPoint);
-            var c2C1Vector = Point3D.Subtract(keyhole.Arc1.CenterPoint, keyhole.Arc2.CenterPoint);
 
-            keyhole.Arc1.NormalPoint = Point3D.Add(keyhole.Arc2.NormalPoint, c2C1Vector);
-            var normalVectorC1 = Point3D.Subtract(keyhole.Arc1.CenterPoint, keyhole.Arc1.NormalPoint);
-            var normalVectorC2 = Point3D.Subtract(keyhole.Arc2.CenterPoint, keyhole.Arc2.NormalPoint);
+            var Arc1 = keyhole.Movements[1] as CircularEntity;
+            var Arc2 = keyhole.Movements[2] as CircularEntity;
+            var Line1 = keyhole.Movements[3];
+            var Line2 = keyhole.Movements[4];
+
+            var c1C2Vector = Point3D.Subtract(Arc2.CenterPoint, Arc1.CenterPoint);
+            var c2C1Vector = Point3D.Subtract(Arc1.CenterPoint, Arc2.CenterPoint);
+
+            Arc1.NormalPoint = Point3D.Add(Arc2.NormalPoint, c2C1Vector);
+            var normalVectorC1 = Point3D.Subtract(Arc1.CenterPoint, Arc1.NormalPoint);
+            var normalVectorC2 = Point3D.Subtract(Arc2.CenterPoint, Arc2.NormalPoint);
             c1C2Vector.Normalize();
             normalVectorC1.Normalize();
             normalVectorC2.Normalize();
 
             var d2 = Vector3D.CrossProduct(c2C1Vector, normalVectorC2);
             d2.Normalize();
-            var p2 = Point3D.Subtract(keyhole.Arc1.CenterPoint, (keyhole.Arc1.Radius * d2));
-            var tmp = Math.Sqrt((keyhole.Arc1.Radius * keyhole.Arc1.Radius) - (keyhole.Arc2.Radius * keyhole.Arc2.Radius));
+            var p2 = Point3D.Subtract(Arc1.CenterPoint, (Arc1.Radius * d2));
+            var tmp = Math.Sqrt((Arc1.Radius * Arc1.Radius) - (Arc2.Radius * Arc2.Radius));
 
-            var p3 = Point3D.Subtract((keyhole.Arc1.CenterPoint + (c1C2Vector * tmp)), (keyhole.Arc2.Radius * d2));
-            var p4 = Point3D.Subtract(keyhole.Arc2.CenterPoint, (keyhole.Arc2.Radius * d2));
-            var p5 = Point3D.Add(keyhole.Arc2.CenterPoint, (keyhole.Arc2.Radius * c1C2Vector));
-            var p6 = Point3D.Add(keyhole.Arc2.CenterPoint, (keyhole.Arc2.Radius * d2));
-            var p7 = Point3D.Add(p3, (2 * keyhole.Arc2.Radius * d2));
+            var p3 = Point3D.Subtract((Arc1.CenterPoint + (c1C2Vector * tmp)), (Arc2.Radius * d2));
+            var p4 = Point3D.Subtract(Arc2.CenterPoint, (Arc2.Radius * d2));
+            var p5 = Point3D.Add(Arc2.CenterPoint, (Arc2.Radius * c1C2Vector));
+            var p6 = Point3D.Add(Arc2.CenterPoint, (Arc2.Radius * d2));
+            var p7 = Point3D.Add(p3, (2 * Arc2.Radius * d2));
 
-            keyhole.Arc1.StartPoint = p7;
-            keyhole.Arc1.EndPoint = p3;
-            keyhole.Arc1.ViaPoint = p2;
-            keyhole.Arc1.Normal = normalVectorC1;
+            Arc1.StartPoint = p7;
+            Arc1.EndPoint = p3;
+            Arc1.ViaPoint = p2;
+            Arc1.Normal = normalVectorC1;
 
-            keyhole.Line1.StartPoint = p3;
-            keyhole.Line1.EndPoint = p4;
+            Line1.StartPoint = p3;
+            Line1.EndPoint = p4;
 
-            keyhole.Arc2.StartPoint = p4;
-            keyhole.Arc2.EndPoint = p6;
-            keyhole.Arc2.ViaPoint = p5;
-            keyhole.Arc2.Normal = normalVectorC2;
+            Arc2.StartPoint = p4;
+            Arc2.EndPoint = p6;
+            Arc2.ViaPoint = p5;
+            Arc2.Normal = normalVectorC2;
 
-            keyhole.Line2.StartPoint = p6;
-            keyhole.Line2.EndPoint = p7;
+            Line2.StartPoint = p6;
+            Line2.EndPoint = p7;
 
 
             //lead in
             keyhole.LeadIn.EndPoint = MathHelpers.GetClosestPoint(keyhole.LeadIn.StartPoint, new List<Point3D> {
-                keyhole.Line1.StartPoint,
-                keyhole.Line1.EndPoint,
-                keyhole.Line2.StartPoint,
-                keyhole.Line2.EndPoint,
+                Line1.StartPoint,
+                Line1.EndPoint,
+                Line2.StartPoint,
+                Line2.EndPoint,
 
             });
-            keyhole.LeadIn.LineColor = keyhole.Arc1.LineColor;
-            keyhole.LeadIn.IsBeamOn = keyhole.Arc1.IsBeamOn;
+
 
         }
 
@@ -336,16 +348,14 @@ namespace ParserLib.Helpers
             // aggiungo in coda ai vertici il primo vertice
             //vertices[poly.Sides] = poly.VertexPoint; // puoi controllare che stia funzionando bene verificando che  poly.Vertices[0] == poly.VertexPoint;
 
-            poly.Lines = new List<Entity>();
-
             //lead in
 
             int index;
             (poly.LeadIn.EndPoint, index) = MathHelpers.GetClosestPointID(poly.LeadIn.StartPoint, vertices);
             vertices[poly.Sides] = poly.VertexPoint;
-            while (poly.Lines.Count < poly.Sides)
+            while (poly.Movements.Count <= poly.Sides)
             {
-                poly.Lines.Add(
+                poly.Movements.Add(
                      new LinearMove()
                      {
                          StartPoint = vertices[index],
@@ -359,22 +369,6 @@ namespace ParserLib.Helpers
                 if (index >= poly.Sides) index = 0;
             }
 
-            //poly.LeadIn.EndPoint = MathHelpers.GetClosestPoint(poly.LeadIn.StartPoint,vertices);
-            //for (int i = 0; i < poly.Sides; i++)
-            //{
-            //    poly.Lines.Add(
-            //        new LinearMove()
-            //        {
-            //            StartPoint = vertices[i],
-            //            EndPoint = vertices[i + 1],
-            //            SourceLine = poly.SourceLine,
-            //            IsBeamOn = poly.IsBeamOn,
-            //            LineColor = poly.LineColor,
-            //            OriginalLine = poly.OriginalLine,
-            //        });
-            //}
-            poly.LeadIn.LineColor = poly.Lines[0].LineColor;
-            poly.LeadIn.IsBeamOn = poly.Lines[0].IsBeamOn;
 
 
         }
@@ -409,9 +403,9 @@ namespace ParserLib.Helpers
             var vC = Point3D.Add(vB, (2 * l2 * d2));
             var vD = Point3D.Add(vC, (-2 * l1 * d1));
 
-            rect.Lines = new List<LinearMove>();
+            
 
-            rect.Lines.Add(
+            rect.Movements.Add(
             new LinearMove()
             {
                 StartPoint = vA,
@@ -422,7 +416,7 @@ namespace ParserLib.Helpers
                 OriginalLine = rect.OriginalLine,
             });
 
-            rect.Lines.Add(new LinearMove()
+            rect.Movements.Add(new LinearMove()
             {
                 StartPoint = vB,
                 EndPoint = vC,
@@ -433,7 +427,7 @@ namespace ParserLib.Helpers
             }
             );
 
-            rect.Lines.Add(
+            rect.Movements.Add(
             new LinearMove()
             {
                 StartPoint = vC,
@@ -444,7 +438,7 @@ namespace ParserLib.Helpers
                 OriginalLine = rect.OriginalLine,
             });
 
-            rect.Lines.Add(
+            rect.Movements.Add(
             new LinearMove()
             {
                 StartPoint = vD,
@@ -457,11 +451,6 @@ namespace ParserLib.Helpers
             );
 
             rect.LeadIn.EndPoint = MathHelpers.GetClosestPoint(rect.LeadIn.StartPoint, new Point3D[]{ mAB,mBC,mCD,mDA});
-            rect.LeadIn.LineColor = rect.Lines[0].LineColor;
-            rect.LeadIn.IsBeamOn = rect.Lines[0].IsBeamOn;
-
-
-
 
         }
 

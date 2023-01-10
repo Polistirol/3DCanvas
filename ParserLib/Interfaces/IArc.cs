@@ -4,7 +4,7 @@ using System.Windows.Media.Media3D;
 
 namespace ParserLib.Interfaces
 {
-    public interface IArc : IEntity
+    public interface IArc : IToolpathEntity
     {
         Point3D ViaPoint { get; set; }
 

@@ -1,6 +1,7 @@
 ﻿using ParserLib.Helpers;
 using ParserLib.Interfaces;
 using ParserLib.Models;
+using ParserLib.Models.Macros;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -300,16 +301,16 @@ namespace ParserLib.Services.Parsers
                 baseEntity.Is2DProgram = programContext.Is2DProgram;
 
                 if (baseEntity.EntityType == EEntityType.Rect)
-                    programContext.LastHeadPosition = (baseEntity as RectMoves).Lines.Last().EndPoint;
+                    programContext.LastHeadPosition = (baseEntity as RectMoves).Movements.Last().EndPoint;
                 else if (baseEntity.EntityType == EEntityType.Slot)
-                    programContext.LastHeadPosition = (baseEntity as SlotMove).Line2.EndPoint;
+                    programContext.LastHeadPosition = (baseEntity as SlotMove).LeadIn.EndPoint;
                 else if (baseEntity.EntityType == EEntityType.Poly)
-                    programContext.LastHeadPosition = (baseEntity as PolyMoves).Lines.Last().EndPoint;
+                    programContext.LastHeadPosition = (baseEntity as PolyMoves).Movements.Last().EndPoint;
                 else
-                    programContext.LastHeadPosition = (baseEntity as Entity).EndPoint;
+                    programContext.LastHeadPosition = (baseEntity as ToolpathEntity).EndPoint;
 
 
-                programContext.LastEntity = baseEntity as IEntity;
+                programContext.LastEntity = baseEntity as IToolpathEntity;
 
                 programContext.UpdateProgramCenterPoint();
                 moves.Add(baseEntity);
@@ -370,7 +371,7 @@ namespace ParserLib.Services.Parsers
 
             entity.LineColor = programContext.ContourLineType;
 
-            IEntity e = (entity as IEntity);
+            IToolpathEntity e = (entity as IToolpathEntity);
 
             e.StartPoint = Create3DPoint(programContext, programContext.LastHeadPosition);
 
@@ -522,51 +523,51 @@ namespace ParserLib.Services.Parsers
                         IsBeamOn = programContext.IsBeamOn,
                         LineColor = programContext.ContourLineType,
                         OriginalLine = lineP,
-                        Arc1 = new ArcMove
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = lineP,
-                            IsStroked = true,
-                            IsLargeArc = true,
-                            Radius = Math.Abs(radius),
-                            CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
-                            NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                        },
-                        Arc2 = new ArcMove
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = lineP,
-                            IsStroked = true,
-                            IsLargeArc = true,
-                            Radius = Math.Abs(radius),
-                            CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
-                            NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
-                        },
-                        Line1 = new LinearMove()
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = lineP,
-                        },
-                        Line2 = new LinearMove()
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = lineP,
-                        }
+                        //Arc1 = new ArcMove
+                        //{
+                        //    SourceLine = programContext.SourceLine,
+                        //    IsBeamOn = programContext.IsBeamOn,
+                        //    LineColor = programContext.ContourLineType,
+                        //    OriginalLine = lineP,
+                        //    IsStroked = true,
+                        //    IsLargeArc = true,
+                        //    Radius = Math.Abs(radius),
+                        //    CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
+                        //    NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                        //},
+                        //Arc2 = new ArcMove
+                        //{
+                        //    SourceLine = programContext.SourceLine,
+                        //    IsBeamOn = programContext.IsBeamOn,
+                        //    LineColor = programContext.ContourLineType,
+                        //    OriginalLine = lineP,
+                        //    IsStroked = true,
+                        //    IsLargeArc = true,
+                        //    Radius = Math.Abs(radius),
+                        //    CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
+                        //    NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                        //},
+                        //Line1 = new LinearMove()
+                        //{
+                        //    SourceLine = programContext.SourceLine,
+                        //    IsBeamOn = programContext.IsBeamOn,
+                        //    LineColor = programContext.ContourLineType,
+                        //    OriginalLine = lineP,
+                        //},
+                        //Line2 = new LinearMove()
+                        //{
+                        //    SourceLine = programContext.SourceLine,
+                        //    IsBeamOn = programContext.IsBeamOn,
+                        //    LineColor = programContext.ContourLineType,
+                        //    OriginalLine = lineP,
+                        //}
 
                     };
 
 
                     var slotMove = entity as SlotMove;
                     GeoHelper.GetMovesFromMacroSlot(ref slotMove);
-                    slotMove.EndPoint = slotMove.Line2.EndPoint;
+                    //slotMove.EndPoint = slotMove.Line2.EndPoint;
                     break;
                 case "P_APPROACH_MC":
                 case "P_RETRACT_MC":
@@ -616,7 +617,6 @@ namespace ParserLib.Services.Parsers
                         LineColor = programContext.ContourLineType,
                         OriginalLine = line,
                         Sides = sides,
-                        Radius = radiusPoly,
                         VertexPoint = vertexPointPoly,
                         NormalPoint = normalPointPoly,
                         CenterPoint = centerPointPoly
@@ -784,7 +784,7 @@ namespace ParserLib.Services.Parsers
                 viaPoint.Z = programContext.Is2DProgram ? 0.0 : GetQuotaValue(quotas[7], programContext);
             }
 
-            (entity as IEntity).EndPoint = endPoint;
+            (entity as IToolpathEntity).EndPoint = endPoint;
 
             if (entity.EntityType == EEntityType.Arc || entity.EntityType == EEntityType.Circle)
             {
