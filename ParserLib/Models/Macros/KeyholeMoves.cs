@@ -13,7 +13,12 @@ namespace ParserLib.Models.Macros
 
         public Point3D Center1 { get; set; }
         public Point3D Center2 { get; set; }
+        public Point3D Normal { get; set; }
+
+
         public double BigRadius { get; set; }
         public double SmallRadius { get; set; }
+
+
     }
 }

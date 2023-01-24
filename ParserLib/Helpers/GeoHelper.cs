@@ -168,6 +168,8 @@ namespace ParserLib.Helpers
 
             circle.Normal = normalVector;
             circle.IsLargeArc = true;
+            circle.Tag = hole;
+
 
             //set LeadIn
             if (leadIn.StartPoint != circle.CenterPoint)
@@ -182,7 +184,7 @@ namespace ParserLib.Helpers
             {
                 leadIn.EndPoint = circle.StartPoint;
             }
-
+            leadIn.Tag= hole;
             
         }
 
@@ -233,18 +235,21 @@ namespace ParserLib.Helpers
             Arc1.EndPoint = arc1EndPoint;
             Arc1.ViaPoint = arc1ViaPoint;
             Arc1.Normal = normalVectorC1;
+            Arc1.Tag = slot;
 
             Arc2.StartPoint = arc2StartPoint;
             Arc2.EndPoint = arc2EndPoint;
             Arc2.ViaPoint = arc2ViaPoint;
             Arc2.Normal = normalVectorC2;
+            Arc2.Tag = slot;
 
             Line1.StartPoint = Arc1.EndPoint;
             Line1.EndPoint = Arc2.StartPoint;
+            Line1.Tag= slot;
 
             Line2.StartPoint = Arc2.EndPoint;
             Line2.EndPoint = Arc1.StartPoint;
-
+            Line2.Tag = slot;
             //lead in
             slot.LeadIn.EndPoint = MathHelpers.GetClosestPoint(slot.LeadIn.StartPoint, new List<Point3D> {
                 Line1.StartPoint,
@@ -253,6 +258,7 @@ namespace ParserLib.Helpers
                 Line2.EndPoint,
 
             });
+            slot.LeadIn.Tag= slot;
 
         }
 
@@ -289,18 +295,21 @@ namespace ParserLib.Helpers
             Arc1.EndPoint = p3;
             Arc1.ViaPoint = p2;
             Arc1.Normal = normalVectorC1;
+            Arc1.Tag = keyhole;
 
             Line1.StartPoint = p3;
             Line1.EndPoint = p4;
+            Line1.Tag= keyhole;
 
             Arc2.StartPoint = p4;
             Arc2.EndPoint = p6;
             Arc2.ViaPoint = p5;
             Arc2.Normal = normalVectorC2;
+            Arc2.Tag= keyhole;
 
             Line2.StartPoint = p6;
             Line2.EndPoint = p7;
-
+            Line2.Tag= keyhole;
 
             //lead in
             keyhole.LeadIn.EndPoint = MathHelpers.GetClosestPoint(keyhole.LeadIn.StartPoint, new List<Point3D> {
@@ -310,6 +319,7 @@ namespace ParserLib.Helpers
                 Line2.EndPoint,
 
             });
+            keyhole.LeadIn.Tag= keyhole;
 
 
         }
@@ -352,6 +362,7 @@ namespace ParserLib.Helpers
 
             int index;
             (poly.LeadIn.EndPoint, index) = MathHelpers.GetClosestPointID(poly.LeadIn.StartPoint, vertices);
+            poly.LeadIn.Tag = poly;
             vertices[poly.Sides] = poly.VertexPoint;
             while (poly.Movements.Count <= poly.Sides)
             {
@@ -364,6 +375,7 @@ namespace ParserLib.Helpers
                          IsBeamOn = poly.IsBeamOn,
                          LineColor = poly.LineColor,
                          OriginalLine = poly.OriginalLine,
+                         Tag= poly,
                      });
                 index++;
                 if (index >= poly.Sides) index = 0;
@@ -414,6 +426,7 @@ namespace ParserLib.Helpers
                 IsBeamOn = rect.IsBeamOn,
                 LineColor = rect.LineColor,
                 OriginalLine = rect.OriginalLine,
+                Tag= rect
             });
 
             rect.Movements.Add(new LinearMove()
@@ -423,7 +436,8 @@ namespace ParserLib.Helpers
                 SourceLine = rect.SourceLine,
                 IsBeamOn = rect.IsBeamOn,
                 LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine
+                OriginalLine = rect.OriginalLine,
+                Tag = rect
             }
             );
 
@@ -436,6 +450,7 @@ namespace ParserLib.Helpers
                 IsBeamOn = rect.IsBeamOn,
                 LineColor = rect.LineColor,
                 OriginalLine = rect.OriginalLine,
+                Tag = rect
             });
 
             rect.Movements.Add(
@@ -447,11 +462,12 @@ namespace ParserLib.Helpers
                 IsBeamOn = rect.IsBeamOn,
                 LineColor = rect.LineColor,
                 OriginalLine = rect.OriginalLine,
+                Tag = rect
             }
             );
 
             rect.LeadIn.EndPoint = MathHelpers.GetClosestPoint(rect.LeadIn.StartPoint, new Point3D[]{ mAB,mBC,mCD,mDA});
-
+            rect.LeadIn.Tag = rect;
         }
 
         public static class StringToFormula

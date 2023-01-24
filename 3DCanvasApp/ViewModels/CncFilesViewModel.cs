@@ -1,25 +1,10 @@
-﻿using Canvas3DViewer.Commands;
-using Canvas3DViewer.Converters;
-using Canvas3DViewer.Models;
-using ParserLib;
-using ParserLib.Interfaces;
-using ParserLib.Models;
-using ParserLib.Services.Parsers;
+﻿using Canvas3DViewer.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Data;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Media3D;
-using System.Windows.Shapes;
-using static ParserLib.Helpers.TechnoHelper;
 
 namespace Canvas3DViewer.ViewModels
 {

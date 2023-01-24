@@ -12,5 +12,8 @@ namespace ParserLib.Interfaces.Macros
         List<ToolpathEntity> Movements { get; }
         ToolpathEntity LeadIn { get; }
 
+        int CheckScrap { get; set; }
+        int Repeat { get; set; }
+
     }
 }

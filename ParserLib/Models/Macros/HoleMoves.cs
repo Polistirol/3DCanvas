@@ -14,25 +14,14 @@ namespace ParserLib.Models.Macros
     public class HoleMoves : Macro, IHole
     {
 
-        public double Radius
-        {
-            get
-            {
-                if (base.Movements[1] is CircularEntity Circle)
-                {
-                    return Circle.Radius;
-                }
+        public double Radius { get; set; }
 
-                return double.NaN;
-
-            }
-        }
         public override TechnoHelper.EEntityType EntityType => TechnoHelper.EEntityType.Hole;
 
         public Point3D Center { get; set; }
-
-
-
+        public Point3D Normal { get; set; }
+        public int Smooth { get; set; }
+        
     }
 
 

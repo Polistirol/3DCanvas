@@ -8,11 +8,13 @@ using System.Windows.Media.Media3D;
 
 namespace ParserLib.Interfaces.Macros
 {
-    internal interface IKeyhole : IMacro
+    public interface IKeyhole : IMacro
     {
         Point3D Center1 { get; set; }
         Point3D Center2 { get; set; }
+        Point3D Normal { get; set; }
         double BigRadius { get; set; }
         double SmallRadius { get; set; }
+
     }
 }

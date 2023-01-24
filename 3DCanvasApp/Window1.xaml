@@ -1,12 +1,14 @@
-﻿<Window x:Class="Canvas3DViewer.Window1"
+﻿<Window
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:gl="clr-namespace:System.Globalization;assembly=mscorlib"
         xmlns:local="clr-namespace:Canvas3DViewer" xmlns:conv="clr-namespace:Canvas3DViewer.Converters"
+        xmlns:PrimaPower="clr-namespace:PrimaPower;assembly=3DViewer" xmlns:WizardViewer="clr-namespace:WizardViewer;assembly=WizardViewer" x:Class="Canvas3DViewer.Window1"
         mc:Ignorable="d"
-        Title="Window1" Height="450" Width="800" FontFamily="Comfortaa">
+        Title="Window1" Height="600" Width="1024" FontFamily="Comfortaa" Loaded="Window_Loaded" KeyDown="Window_KeyDown"
+    >
     <Window.Resources>
         <!--Control colors.-->
         <conv:FontWeightConverter x:Key="FontWeightConverter" />
@@ -21,11 +23,11 @@
         <SolidColorBrush Color="#EFEFEF" x:Key="NormalGrayPrimaPower" />
         <SolidColorBrush Color="#DBDBDB" x:Key="LightGrayPrimaPower" />
 
-        <Style TargetType="ListViewItem">
+        <Style TargetType="{x:Type ListViewItem}">
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="ListViewItem">
-                        <Border Name="Border" Margin="3" Padding="6" SnapsToDevicePixels="true" BorderThickness="0.5" CornerRadius="4" BorderBrush="{StaticResource DarkGrayPrimaPower}">
+                    <ControlTemplate TargetType="{x:Type ListViewItem}">
+                        <Border x:Name="Border" Margin="3" Padding="6" SnapsToDevicePixels="true" BorderThickness="0.5" CornerRadius="4" BorderBrush="{StaticResource DarkGrayPrimaPower}">
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -40,7 +42,7 @@
             </Setter>
         </Style>
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition/>
@@ -55,22 +57,22 @@
                 <RowDefinition Height="30"/>
                 <RowDefinition Height="35"/>
                 <RowDefinition Height="35"/>
-                <RowDefinition Height="302*"/>
-                <RowDefinition Height="67*"/>
+                <RowDefinition Height="117*"/>
+                <RowDefinition Height="50*"/>
             </Grid.RowDefinitions>
 
-            <TextBox Grid.Row="1" Margin="2" VerticalContentAlignment="Center" Text="{Binding CncFilesProgramPath}" x:Name="txtIsoPrograms" Background="White" />
-            
-            <ComboBox Grid.Row="2" Margin="5" ItemsSource="{Binding ExtFiles}" SelectedItem="{Binding SelectedExtensionFile}" />
+            <TextBox Grid.Row="1" Margin="2,2,2,2" VerticalContentAlignment="Center" Text="{Binding CncFilesProgramPath}" x:Name="txtIsoPrograms" Background="White" />
 
-            <ListView Padding="0" Name="listView" ItemsSource="{Binding CncFiles}" Grid.Row="3" SelectionChanged="ListView_SelectionChanged" SnapsToDevicePixels="True">
+            <ComboBox Grid.Row="2" Margin="5,5,5,5" ItemsSource="{Binding ExtFiles}" SelectedItem="{Binding SelectedExtensionFile}" />
+
+            <ListView Padding="0" x:Name="listView" ItemsSource="{Binding CncFiles}" Grid.Row="3" SelectionChanged="ListView_SelectionChanged" SnapsToDevicePixels="True">
                 <ListView.Resources>
                     <!-- attempt to override selection color -->
                     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightColorKey}" Color="Green" />
                 </ListView.Resources>
                 <ListView.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel HorizontalAlignment="Stretch"></StackPanel>
+                        <StackPanel HorizontalAlignment="Stretch"/>
                     </ItemsPanelTemplate>
                 </ListView.ItemsPanel>
                 <ListView.ItemTemplate>
@@ -82,21 +84,16 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="{Binding Name}" FontWeight="{Binding Material,Converter={StaticResource FontWeightConverter}}" Grid.Row="0" Margin="5" />
-                                <TextBlock Text="{Binding Path=LastWriteTime,StringFormat='dd-mm-yyyy hh:mm:ss'}" Grid.Row="2" Margin="5" />
-                                <TextBlock Grid.Row="1" Margin="5">
-                                    <Run Text="{Binding Material}" />
-                                    <Run Text="-" />
-                                    <Run Text="{Binding Thickness}" />
-                                    <Run Text="mm" />
-                                </TextBlock>
+                                <TextBlock Text="{Binding Name}" FontWeight="{Binding Material, Converter={StaticResource FontWeightConverter}}" Grid.Row="0" Margin="5" />
+                                <TextBlock Text="{Binding LastWriteTime, StringFormat=dd-mm-yyyy hh:mm:ss}" Grid.Row="2" Margin="5" />
+                                <TextBlock Grid.Row="1" Margin="5"><Run Text="{Binding Material}" /><Run Text=" "/><Run Text="-" /><Run Text=" "/><Run Text="{Binding Thickness}" /><Run Text=" "/><Run Text="mm" /></TextBlock>
                             </Grid>
                         </Grid>
                     </ItemContainerTemplate>
                 </ListView.ItemTemplate>
             </ListView>
 
-            <StackPanel Grid.Row="4" VerticalAlignment="Top" Margin="10,10,10,0" Height="143">
+            <StackPanel Grid.Row="4" VerticalAlignment="Center" Height="97" HorizontalAlignment="Center" Width="159">
                 <TextBlock Text="" x:Name="lbl" TextWrapping="Wrap" Margin="5,5" HorizontalAlignment="Left" Width="150" />
                 <TextBlock Text="" x:Name="txtLine" Margin="5,5" HorizontalAlignment="Left" MouseLeftButtonDown="txtLine_MouseLeftButtonDown"/>
                 <TextBlock Text="" x:Name="txtLineNumber" TextWrapping="Wrap"  Margin="5,5" HorizontalAlignment="Left"/>
@@ -108,7 +105,10 @@
         </Grid>
 
 
-        <Canvas Grid.Column="1" ClipToBounds="True" x:Name="canvas1" Background="#2d2d2d" MouseDown="canvas1_MouseDown" MouseMove="canvas1_MouseMove" MouseWheel="canvas1_MouseWheel" />
+        <PrimaPower:Siemens3DViewer  Grid.Column="1" ClipToBounds="True" x:Name="Viewer3D" Background="#2d2d2d"  />
+
+
+        <WizardViewer:UserControl1 x:Name="Wizard" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Top"/>
 
 
     </Grid>

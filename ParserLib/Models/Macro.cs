@@ -3,22 +3,21 @@ using ParserLib.Interfaces.Macros;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media.Media3D;
-using System.Windows.Shapes;
 
 namespace ParserLib.Models
 {
     public abstract class Macro : IMacro
     {
-        //public abstract ToolpathEntity LeadIn { get; set; }
         public TechnoHelper.ELineType LineColor { get; set; }
         public abstract TechnoHelper.EEntityType EntityType { get; }
         public int SourceLine { get; set; }
         public bool IsBeamOn { get; set; }
         public bool Is2DProgram { get; set; }
         public string OriginalLine { get; set; }
+        public int CheckScrap { get; set; }
+        public int Repeat { get; set; }
+        public Object Tag { get; set; }
 
         public  ToolpathEntity LeadIn
         {
@@ -30,7 +29,6 @@ namespace ParserLib.Models
         }
 
         public virtual List<ToolpathEntity> Movements { get; set; }
-        //List<ToolpathEntity> IMacro.Movements { get; }
 
         public void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {
