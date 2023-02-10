@@ -48,10 +48,26 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Components\EditingButtonsControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Components\Point3DCoordinatesControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Wizard.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Compile Include="Components\EditingButtonsControl.xaml.cs">
+      <DependentUpon>EditingButtonsControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Components\Point3DCoordinatesControl.xaml.cs">
+      <DependentUpon>Point3DCoordinatesControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ViewModel\EditingButtonsViewModel.cs" />
+    <Compile Include="ViewModel\Point3DCoordinatesViewModel.cs" />
     <Compile Include="Wizard.xaml.cs">
       <DependentUpon>Wizard.xaml</DependentUpon>
       <SubType>Code</SubType>

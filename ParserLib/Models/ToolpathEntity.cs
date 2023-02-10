@@ -30,6 +30,9 @@ namespace ParserLib.Models
         public bool IsLeadIn { get; set; }
 
         public object Tag { get; set; }
+        public Point3D OriginalEndPoint { get; set; }
+        public Point3D OriginalStartPoint { get; set; }
+
         public abstract void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius);
     }
 }

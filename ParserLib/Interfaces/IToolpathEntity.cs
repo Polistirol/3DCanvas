@@ -9,6 +9,9 @@ namespace ParserLib.Interfaces
         Point3D EndPoint { get; set; }
 
         Point3D StartPoint { get; set; }
+        Point3D OriginalEndPoint { get; set; }
+
+        Point3D OriginalStartPoint { get; set; }
 
         PathGeometry GeometryPath { get; set; }
 

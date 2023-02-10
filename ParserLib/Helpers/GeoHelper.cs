@@ -11,6 +11,7 @@ using System.Speech.Recognition.SrgsGrammar;
 using System.Windows.Media.Animation;
 using ParserLib.Interfaces;
 using ParserLib.Models.Macros;
+using ParserLib.Interfaces.Macros;
 
 namespace ParserLib.Helpers
 {
@@ -72,17 +73,10 @@ namespace ParserLib.Helpers
                 move.IsLargeArc = true;
             }
             else
-            {
-
-                //var alpha = Vector3D.AngleBetween(cEVector, cSVector) ;
-                //alpha = (Math.PI / 180) * alpha;
-                //Vector3D rotatedVector = MathHelpers.Rotate_Rodriguez(cSVector, move.Normal, alpha);
-                //move.ViaPoint = Point3D.Add(move.CenterPoint, rotatedVector * move.Radius);
+ 
                 move.IsLargeArc = MathHelpers.IsLargeAngle(cSVector, cEVector, move.Normal);
-                
-            }
 
-        move.IsStroked = true;
+            move.IsStroked = true;
 
         }
 
@@ -142,8 +136,8 @@ namespace ParserLib.Helpers
             //const double alpha = -0.0001745329;
             //Se da fastidio questa tolleranza bisogna introdurre L'elemento ellipse geometry che fà un cerchio
 
-            LinearMove leadIn = hole.LeadIn as LinearMove;       
-            CircularEntity circle = hole.Movements[1] as CircularEntity ;
+            LinearMove leadIn = hole.LeadIn as LinearMove;
+            ArcMove circle = hole.Movements[1] as ArcMove;
 
             double maxClosingGap = 0.01; //mm
             double alpha = -maxClosingGap / hole.Radius;
@@ -154,14 +148,25 @@ namespace ParserLib.Helpers
             normalVector.Normalize();
 
             var vectorUp = (circle.CenterPoint.X == circle.NormalPoint.X && circle.CenterPoint.Y == circle.NormalPoint.Y) ? new Vector3D(1, 0, 0) : new Vector3D(0, 0, 1);
-
-            var versor = Vector3D.CrossProduct(normalVector, vectorUp);
-            versor.Normalize();
+            Vector3D versor = new Vector3D();
+            if (leadIn.StartPoint == circle.CenterPoint)
+            {
+                versor = Vector3D.CrossProduct(normalVector, vectorUp);
+                versor.Normalize();
+                leadIn.EndPoint = Point3D.Add(leadIn.StartPoint, versor * circle.Radius);
+            }
+            else
+            {
+                Vector3D centerToApproach = Point3D.Subtract(leadIn.StartPoint, circle.CenterPoint);
+                var CALenght = centerToApproach.Length;
+                centerToApproach.Normalize();
+                leadIn.EndPoint = Point3D.Add(leadIn.StartPoint, centerToApproach * (circle.Radius - CALenght));
+                versor.Normalize();
+                versor = centerToApproach;
+            }
 
             var vr = Vector3D.Multiply(versor, hole.Radius);
-            //MathHelpers.Rotate_Rodriguez(vr, normalVector, alpha);
-            var rotatedVector = vr * Math.Cos(alpha) + Vector3D.CrossProduct(normalVector, vr) * Math.Sin(alpha) + normalVector * (Vector3D.DotProduct(normalVector, vr) * (1 - Math.Cos(alpha)));
-
+            var rotatedVector = MathHelpers.RotateAround(vr, normalVector, alpha);
             circle.StartPoint = Vector3D.Add(vr, circle.CenterPoint);
             circle.ViaPoint = Vector3D.Add(-vr, circle.CenterPoint);
             circle.EndPoint = Vector3D.Add(rotatedVector, circle.CenterPoint);
@@ -170,30 +175,16 @@ namespace ParserLib.Helpers
             circle.IsLargeArc = true;
             circle.Tag = hole;
 
-
-            //set LeadIn
-            if (leadIn.StartPoint != circle.CenterPoint)
-            {
-                Vector3D centerToApproach = Point3D.Subtract(leadIn.StartPoint, circle.CenterPoint);
-            
-                var CALenght = centerToApproach.Length;
-                centerToApproach.Normalize();
-                leadIn.EndPoint = Point3D.Add(leadIn.StartPoint,centerToApproach * (circle.Radius - CALenght) );
-            }
-            else
-            {
-                leadIn.EndPoint = circle.StartPoint;
-            }
-            leadIn.Tag= hole;
-            
+            leadIn.Tag = hole;
         }
 
         public static void GetMovesFromMacroSlot(ref SlotMove slot)
         {
-            var Arc1 = slot.Movements[1] as CircularEntity;
-            var Arc2 = slot.Movements[2] as CircularEntity;
-            var Line1 = slot.Movements[3];
-            var Line2 = slot.Movements[4];
+
+            var Line1 = slot.Movements[1];
+            var Arc1 = slot.Movements[2] as ArcMove;
+            var Line2 = slot.Movements[3];
+            var Arc2 = slot.Movements[4] as ArcMove;
 
             var c1C2Vector = Point3D.Subtract(Arc1.CenterPoint, Arc2.CenterPoint);
 
@@ -245,7 +236,7 @@ namespace ParserLib.Helpers
 
             Line1.StartPoint = Arc1.EndPoint;
             Line1.EndPoint = Arc2.StartPoint;
-            Line1.Tag= slot;
+            Line1.Tag = slot;
 
             Line2.StartPoint = Arc2.EndPoint;
             Line2.EndPoint = Arc1.StartPoint;
@@ -256,17 +247,32 @@ namespace ParserLib.Helpers
                 Line1.EndPoint,
                 Line2.StartPoint,
                 Line2.EndPoint,
-
             });
-            slot.LeadIn.Tag= slot;
 
+            slot.LeadIn.Tag = slot;
+            GetMacroOrderedArray(slot);
         }
 
+        private static void GetMacroOrderedArray(Macro macro)
+        {
+            var leadin = macro.LeadIn;
+            if (leadin != null)
+            {
+                List<ToolpathEntity> list = new List<ToolpathEntity>(macro.Movements);
+                list[0] = leadin;
+                list[1] = macro.Movements.FirstOrDefault(x => x.StartPoint == leadin.EndPoint);
+                for (int i = 2; i < macro.Movements.Count; i++)
+                {
+                    list[i] = macro.Movements.FirstOrDefault(x => x.StartPoint == list[i - 1].EndPoint);
+                }
+                macro.Movements = list;
+            }
+        }
         public static void GetMovesFromMacroKeyhole(ref KeyholeMoves keyhole)
         {
 
-            var Arc1 = keyhole.Movements[1] as CircularEntity;
-            var Arc2 = keyhole.Movements[2] as CircularEntity;
+            var Arc1 = keyhole.Movements[1] as ArcMove;
+            var Arc2 = keyhole.Movements[2] as ArcMove;
             var Line1 = keyhole.Movements[3];
             var Line2 = keyhole.Movements[4];
 
@@ -299,17 +305,17 @@ namespace ParserLib.Helpers
 
             Line1.StartPoint = p3;
             Line1.EndPoint = p4;
-            Line1.Tag= keyhole;
+            Line1.Tag = keyhole;
 
             Arc2.StartPoint = p4;
             Arc2.EndPoint = p6;
             Arc2.ViaPoint = p5;
             Arc2.Normal = normalVectorC2;
-            Arc2.Tag= keyhole;
+            Arc2.Tag = keyhole;
 
             Line2.StartPoint = p6;
             Line2.EndPoint = p7;
-            Line2.Tag= keyhole;
+            Line2.Tag = keyhole;
 
             //lead in
             keyhole.LeadIn.EndPoint = MathHelpers.GetClosestPoint(keyhole.LeadIn.StartPoint, new List<Point3D> {
@@ -319,8 +325,8 @@ namespace ParserLib.Helpers
                 Line2.EndPoint,
 
             });
-            keyhole.LeadIn.Tag= keyhole;
-
+            keyhole.LeadIn.Tag = keyhole;
+            GetMacroOrderedArray(keyhole);
 
         }
 
@@ -375,13 +381,11 @@ namespace ParserLib.Helpers
                          IsBeamOn = poly.IsBeamOn,
                          LineColor = poly.LineColor,
                          OriginalLine = poly.OriginalLine,
-                         Tag= poly,
+                         Tag = poly,
                      });
                 index++;
                 if (index >= poly.Sides) index = 0;
             }
-
-
 
         }
 
@@ -415,72 +419,65 @@ namespace ParserLib.Helpers
             var vC = Point3D.Add(vB, (2 * l2 * d2));
             var vD = Point3D.Add(vC, (-2 * l1 * d1));
 
-            
+            Point3D[] movesTarget = new Point3D[7] { vA, vB, vC, vD, vA, vB, vC };
+            rect.LeadIn.EndPoint = MathHelpers.GetClosestPoint(rect.LeadIn.StartPoint, new Point3D[] { mAB, mBC, mCD, mDA });
+            int index = 0;
+            Point3D _unused;
+            (_unused, index) = MathHelpers.GetClosestPointID(rect.LeadIn.EndPoint, new Point3D[] { vA, vB, vC, vD }); ;
 
             rect.Movements.Add(
-            new LinearMove()
-            {
-                StartPoint = vA,
-                EndPoint = vB,
-                SourceLine = rect.SourceLine,
-                IsBeamOn = rect.IsBeamOn,
-                LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-                Tag= rect
-            });
-
-            rect.Movements.Add(new LinearMove()
-            {
-                StartPoint = vB,
-                EndPoint = vC,
-                SourceLine = rect.SourceLine,
-                IsBeamOn = rect.IsBeamOn,
-                LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-                Tag = rect
-            }
+                new LinearMove()
+                {
+                    StartPoint = rect.LeadIn.EndPoint,
+                    EndPoint = movesTarget[index],
+                    SourceLine = rect.SourceLine,
+                    IsBeamOn = rect.IsBeamOn,
+                    LineColor = rect.LineColor,
+                    OriginalLine = rect.OriginalLine,
+                    Tag = rect
+                }
             );
 
-            rect.Movements.Add(
-            new LinearMove()
+            for (int i = 0; i < 3; i++)
             {
-                StartPoint = vC,
-                EndPoint = vD,
-                SourceLine = rect.SourceLine,
-                IsBeamOn = rect.IsBeamOn,
-                LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-                Tag = rect
-            });
-
-            rect.Movements.Add(
-            new LinearMove()
-            {
-                StartPoint = vD,
-                EndPoint = vA,
-                SourceLine = rect.SourceLine,
-                IsBeamOn = rect.IsBeamOn,
-                LineColor = rect.LineColor,
-                OriginalLine = rect.OriginalLine,
-                Tag = rect
+                rect.Movements.Add(
+                    new LinearMove()
+                    {
+                        StartPoint = movesTarget[index + i],
+                        EndPoint = movesTarget[index + i + 1],
+                        SourceLine = rect.SourceLine,
+                        IsBeamOn = rect.IsBeamOn,
+                        LineColor = rect.LineColor,
+                        OriginalLine = rect.OriginalLine,
+                        Tag = rect
+                    }
+                );
             }
-            );
+            rect.Movements.Add(
+                new LinearMove()
+                {
+                    StartPoint = movesTarget[index + 3],
+                    EndPoint = rect.Movements[1].EndPoint,
+                    SourceLine = rect.SourceLine,
+                    IsBeamOn = rect.IsBeamOn,
+                    LineColor = rect.LineColor,
+                    OriginalLine = rect.OriginalLine,
+                    Tag = rect
+                });
 
-            rect.LeadIn.EndPoint = MathHelpers.GetClosestPoint(rect.LeadIn.StartPoint, new Point3D[]{ mAB,mBC,mCD,mDA});
             rect.LeadIn.Tag = rect;
         }
 
         public static class StringToFormula
         {
             private static string[] _operators = { "-", "+", ":", "*", "^" };
-
             private static Func<double, double, double>[] _operations = {
         (a1, a2) => a1 - a2,
         (a1, a2) => a1 + a2,
         (a1, a2) => a1 / a2,
         (a1, a2) => a1 * a2,
         (a1, a2) => Math.Pow(a1, a2)
-    };
+        };
 
             public static double Eval(string expression)
             {
@@ -549,27 +546,16 @@ namespace ParserLib.Helpers
                 {
                     string token = tokens[index];
                     if (tokens[index] == "(")
-                    {
                         parenlevels += 1;
-                    }
-
                     if (tokens[index] == ")")
-                    {
                         parenlevels -= 1;
-                    }
-
                     if (parenlevels > 0)
-                    {
                         subExpr.Append(token);
-                    }
-
                     index += 1;
                 }
 
                 if ((parenlevels > 0))
-                {
                     throw new ArgumentException("Mis-matched parentheses in expression");
-                }
                 return subExpr.ToString();
             }
 
@@ -592,15 +578,10 @@ namespace ParserLib.Helpers
                         tokens.Add(c.ToString());
                     }
                     else
-                    {
                         sb.Append(c);
-                    }
                 }
-
                 if ((sb.Length > 0))
-                {
                     tokens.Add(sb.ToString());
-                }
                 return tokens;
             }
         }

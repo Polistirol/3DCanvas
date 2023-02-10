@@ -59,6 +59,8 @@
     <Compile Include="Converters\FontWeightConverter.cs" />
     <Compile Include="Converters\From3DTo2DPointConversion.cs" />
     <Compile Include="Resource\Axes.cs" />
+    <Compile Include="Resource\PathDataObject.cs" />
+    <Compile Include="Resource\ViewerHelper.cs" />
     <Compile Include="Siemens3DViewer.xaml.cs">
       <DependentUpon>Siemens3DViewer.xaml</DependentUpon>
       <SubType>Code</SubType>

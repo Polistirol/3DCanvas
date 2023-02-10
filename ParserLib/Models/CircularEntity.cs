@@ -7,7 +7,7 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Models
 {
-    public class CircularEntity : ToolpathEntity, IArc
+    public class CircularEntity  
     {
         public bool IsStroked { get; set; }
 
@@ -31,16 +31,7 @@ namespace ParserLib.Models
 
         public SweepDirection ArcSweepDirection { get; set; }
 
-        public override EEntityType EntityType => throw new NotImplementedException();
 
-        public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
-        {
-            throw new NotImplementedException();
-        }
 
-        public override string ToString()
-        {
-            return $"Arc sp: {StartPoint} vp: {ViaPoint} ep: {EndPoint}";
-        }
     }
 }

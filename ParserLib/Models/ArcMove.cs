@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ParserLib.Interfaces;
+using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
@@ -6,14 +7,41 @@ using static ParserLib.Helpers.TechnoHelper;
 
 namespace ParserLib.Models
 {
-    public class ArcMove : CircularEntity
+    public class ArcMove : ToolpathEntity, IArc
     {
+
+
         private double strokeThickness = 1;
         private double degreeToRad = Math.PI / 180;
         private Vector3D vpn = new Vector3D(0, 0, 1);
         private Vector VectorForRotationAngleCalculation = new Vector(1, 0);
 
+
+        public bool IsStroked { get; set; }
+
+        public bool IsRotating { get; set; }
+
+        public bool IsLargeArc { get; set; }
+
+        public double Radius { get; set; }// raggio della circonferenza a cui appartiene l'arco di circonferenza
+
+        public double RotationAngle { get; set; }
+
+        public Vector3D Normal { get; set; }// vettore normale al piano su cui giace l'arco di circonferenze
+
+        public Point3D ViaPoint { get; set; }
+        public Point3D OriginalViaPoint { get; set; }
+        public Point3D NormalPoint { get; set; }
+
+        public Point3D CenterPoint { get; set; }
+
+        public Size ArcSize { get; set; }
+
+        public SweepDirection ArcSweepDirection { get; set; }
+
+
         public override EEntityType EntityType { get => EEntityType.Arc; }
+
 
         public override void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius)
         {

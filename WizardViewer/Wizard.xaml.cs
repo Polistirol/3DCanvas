@@ -2,21 +2,14 @@
 using ParserLib.Interfaces.Macros;
 using ParserLib.Models;
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
+using WizardViewer.Components;
+using WizardViewer.ViewModel;
 using static ParserLib.Helpers.TechnoHelper;
 
 namespace WizardViewer
@@ -29,26 +22,43 @@ namespace WizardViewer
 
         public string resourcePath = @"D:\_DEV\VS_DEV\Repos\3DCanvas\WizardViewer\resources\";
         public string imagFileExtension = ".png";
+        public string[] defaultFormat = new string[3] {"X","Y","Z"};
+        public Path inputPath { get; set; }
+        public EditingButtonsControl ButtonsControl {get; set;}
         public UserControl1()
         {
             InitializeComponent();
             this.Visibility = Visibility.Collapsed;
+            GeometryStack.IsEnabled = false;
+            AssignButtonActions();
+
         }
+
+        private void AssignButtonActions()
+        {
+            Buttons.PreviewBtn_Clicked += OnPreviewBtnClick;
+            Buttons.UnlockBtn_Clicked += OnUnlockBtnClick;
+            Buttons.SaveBtn_Clicked += OnSaveBtnClick;
+            Buttons.RevertBtn_Clicked += OnRevertBtnClick;
+        }
+
+
 
         public void Reset()
         {
             this.Visibility = Visibility.Collapsed;
             img.Source = null;
             GeometryStack.Children.Clear();
-            //ButtonStack.Children.Clear();
-            //TechnologyStack.Children.Clear();
-            
+            GeometryStack.IsEnabled = false;
+            Buttons.ResetButtons();
 
         }
         
-        public void SetWizard(IBaseEntity entity)
+        public void SetWizard(Path p)
         {
+            Reset();
             this.Visibility = Visibility.Visible;
+            var entity = p.Tag as IBaseEntity;
             if (entity is IMacro macro)
             {
 
@@ -59,12 +69,18 @@ namespace WizardViewer
                         break;
                     case EEntityType.Slot:
                         BuildSlotWizard(entity as ISlot);
+                        break; 
+                    case EEntityType.Keyhole:
+                        BuildKeyholeWizard(entity as IKeyhole);
+                        break;
+                    case EEntityType.Poly:
+                        BuildPolyWizard(entity as IPoly);
+                        break;
+                    case EEntityType.Rect:
+                        BuildRectWizard(entity as IRect);
                         break;
                     default: break;
-
                 }
-
-
             }
             else if (entity is ArcMove)
                 BuildArcMoveWizard(entity as ArcMove);
@@ -72,49 +88,67 @@ namespace WizardViewer
                 BuildLinearMoveWizard(entity as LinearMove);
             else
                 return;
+            SetStandardValues(entity);        
         }
 
         private void BuildLinearMoveWizard(LinearMove linearMove)
         {
             img.Source = new BitmapImage(new Uri(resourcePath + "LINE" + imagFileExtension));
-            AddStackPanel_NamePoint(GeometryStack, "EndPoint", linearMove.EndPoint);
-            SetStandardTechnoStack(linearMove as IBaseEntity);
+            //AddControl("Start Point", linearMove.StartPoint, defaultFormat, false);
+            AddControl("End Point", linearMove.OriginalEndPoint, defaultFormat);
         }
-
+        private void BuildArcMoveWizard(ArcMove g104)
+        {
+            img.Source = new BitmapImage(new Uri(resourcePath + "A3P" + imagFileExtension));
+            //AddControl("Start Point", g104.StartPoint, defaultFormat,false);
+            AddControl("Via Point", g104.OriginalViaPoint, new string[] { "I", "J", "K" });
+            AddControl("End Point", g104.OriginalEndPoint, defaultFormat);
+            
+        }
         private void BuildHoleWizard(IHole hole)
         {
             img.Source = new BitmapImage(new Uri(resourcePath + "HOLE" + imagFileExtension));
+            AddControl("Center", hole.Center, defaultFormat);
+            AddControl("Normal", hole.Normal, defaultFormat);
+            AddControl("Radius", hole.Radius);
 
-            #region geometry Stack
-            AddStackPanel_NamePoint(GeometryStack, "Center", hole.Center);
-            AddStackPanel_NamePoint(GeometryStack, "Normal", hole.Normal);
-            AddStackPanel_NameValue(GeometryStack, "Radius", hole.Radius);
-            #endregion
-
-            #region techno stack
-            SetStandardTechnoStack(hole as IBaseEntity);
-            #endregion
 
         }
         private void BuildSlotWizard(ISlot slot)
         {
             img.Source = new BitmapImage(new Uri(resourcePath + "SLOT" + imagFileExtension));
-            AddStackPanel_NamePoint(GeometryStack, "Center1", slot.Center1);
-            AddStackPanel_NamePoint(GeometryStack,"Center2", slot.Center2);
-            AddStackPanel_NamePoint(GeometryStack,"Normal",slot.Normal );
-            AddStackPanel_NameValue(GeometryStack,"Radius", slot.Radius);
-            #region techno stack
-            SetStandardTechnoStack(slot as IBaseEntity);
-            #endregion
+            AddControl("Center1", slot.Center1, defaultFormat);
+            AddControl("Center2", slot.Center2, defaultFormat);
+            AddControl("Normal", slot.Normal, defaultFormat);
+            AddControl("Radius", slot.Radius);
         }
-
-
-        private void BuildArcMoveWizard(ArcMove g104)
+        private void BuildRectWizard(IRect rect)
         {
-            img.Source = new BitmapImage(new Uri(resourcePath + "G104" + imagFileExtension));
-            AddStackPanel_G104(GeometryStack, g104.StartPoint, g104.ViaPoint);
-            SetStandardTechnoStack(g104 as IBaseEntity);
+            img.Source = new BitmapImage(new Uri(resourcePath + "RECT" + imagFileExtension));
+            AddControl("Center", rect.CenterPoint, defaultFormat);
+            AddControl("Vertex", rect.VertexPoint, defaultFormat);
+            AddControl("Side", rect.SidePoint, defaultFormat);
+
         }
+
+        private void BuildPolyWizard(IPoly poly)
+        {
+            img.Source = new BitmapImage(new Uri(resourcePath + "POLY" + imagFileExtension));
+            AddControl("Center", poly.CenterPoint, defaultFormat);
+            AddControl("Vertex", poly.VertexPoint, defaultFormat);
+            AddControl("Side", poly.NormalPoint, defaultFormat);
+            AddControl("Sides", poly.Sides);
+        }
+        private void BuildKeyholeWizard(IKeyhole keyhole)
+        {
+            img.Source = new BitmapImage(new Uri(resourcePath + "KEYHOLE" + imagFileExtension));
+            AddControl("Center1", keyhole.Center1, defaultFormat);
+            AddControl("Center2", keyhole.Center2, defaultFormat);
+            AddControl("Normal", keyhole.Normal, defaultFormat);
+            AddControl("Radius1", keyhole.BigRadius);
+            AddControl("Radius2", keyhole.SmallRadius);
+        }
+
 
 
         private SolidColorBrush GetLineColor(ELineType lineColor)
@@ -148,164 +182,67 @@ namespace WizardViewer
             }
         }
 
-        private void SetStandardTechnoStack(IBaseEntity entity)
+        private void SetStandardValues(IBaseEntity entity)
         {
-            AddStackPanel_NameValue(GeometryStack, "Color", (int)entity.LineColor, GetLineColor(entity.LineColor));
-            //AddStackPanel_NameValue(TechnologyStack, "at Line", entity.SourceLine);
-            //AddStackPanel_NameValue(TechnologyStack, "Original Line", entity.OriginalLine);
+            AddControl("Cutting Line", (int)entity.LineColor);
         }
-        private void AddStackPanel_G104(StackPanel SPtoAddTo,Point3D startPoint, Point3D viaPoint)
-        {
-            StackPanel sp = new StackPanel();
-            sp.Orientation = Orientation.Horizontal;
-            sp.Background = Brushes.White;
-            sp.Name = "G104SP";
-            sp.Children.Add(new Label()
-            {
-                Content = "G104"
-            });
-            sp.Children.Add(new Label()
-            {
-                Content = "X",
-                Foreground = Brushes.Red,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = startPoint.X.ToString(),
-                Width = 60,
 
-            });
-            sp.Children.Add(new Label()
-            {
-                Content = "Y",
-                Foreground = Brushes.Green,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = startPoint.Y.ToString(),
-                Width = 60,
-            });
-            sp.Children.Add(new Label()
-            {
-                Content = "Z",
-                Foreground = Brushes.Blue,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = startPoint.Z.ToString(),
-                Width = 60,
-            });
-            sp.Children.Add(new Label()
-            {
-                Content = "I",
-                Foreground = Brushes.Red,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = viaPoint.X.ToString(),
-                Width = 60,
-            }); 
-            sp.Children.Add(new Label()
-            {
-                Content = "J",
-                Foreground = Brushes.Green,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = viaPoint.Y.ToString(),
-                Width = 60,
-            });
-            sp.Children.Add(new Label()
-            {
-                Content = "K",
-                Foreground = Brushes.Blue,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = viaPoint.Z.ToString(),
-                Width = 60,
-            });
-
-            SPtoAddTo.Children.Add(sp);
+        private void AddControl(string pointName , Point3D point , string[] axisFormat) {
+            var vM = new Point3DCoordinatesViewModel();
+            vM.PointName = pointName;
+            vM.X = point.X;
+            vM.Y = point.Y;
+            vM.Z = point.Z;
+            vM.XName = axisFormat[0];
+            vM.YName = axisFormat[1];
+            vM.ZName = axisFormat[2];
+            var control = new Point3DCoordinatesControl(vM);
+            GeometryStack.Children.Add(control);
         }
-        private void AddStackPanel_NamePoint(StackPanel SPtoAddTo, string pointName, Point3D point)
-        {
-            StackPanel sp = new StackPanel();
-            sp.Orientation = Orientation.Horizontal;
-            sp.Background = Brushes.White;
-            sp.Name = pointName+"SP";
-            sp.Children.Add(new Label()
-            {
-                Content = pointName
-            });
-            sp.Children.Add(new Label()
-            {
-                Content = "X",
-                Foreground = Brushes.Red,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = point.X.ToString(),
-                Width = 60,
 
-            });
-            sp.Children.Add(new Label()
-            {
-                Content = "Y",
-                Foreground = Brushes.Green,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = point.Y.ToString(),
-                Width = 60,
-            });
-            sp.Children.Add(new Label()
-            {
-                Content = "Z",
-                Foreground = Brushes.Blue,
-                FontWeight = FontWeights.Bold,
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = point.Z.ToString(),
-                Width = 60,
-            });
-            SPtoAddTo.Children.Add(sp);
+        private void AddControl(string pointName, double value )
+        {
+            var vM = new Point3DCoordinatesViewModel();
+            vM.PointName = pointName;
+            vM.X = value;
+            vM.Y = null;
+            vM.Z = null;
+            var control = new Point3DCoordinatesControl(vM);
+            GeometryStack.Children.Add(control);
+        }
+
+        private void AddControl(string pointName, Point point, string[] axisFormat)
+        {
+            var vM = new Point3DCoordinatesViewModel();
+            vM.PointName = pointName;
+            vM.X = point.X;
+            vM.Y = point.Y;
+            //vM.Z = point.Z;
+            vM.XName = axisFormat[0];
+            vM.YName = axisFormat[1];
+            //vM.ZName = axisFormat[2];
+            var control = new Point3DCoordinatesControl(vM);
+            GeometryStack.Children.Add(control);
+        }
+
+        private void OnUnlockBtnClick()
+        {
+            GeometryStack.IsEnabled = Buttons.vM.IsUnlocked;
+        }
+
+        private void OnPreviewBtnClick()
+        {
+            move
+        }
+
+        private void OnRevertBtnClick()
+        {
             
-
-        }
-        private void AddStackPanel_NameValue(StackPanel SPtoAddTo, string ItemName,double value,Brush textColor = null)
-        {
-            AddStackPanel_NameValue(SPtoAddTo, ItemName, value.ToString(), textColor);
-        }        
-        private void AddStackPanel_NameValue(StackPanel SPtoAddTo, string ItemName,string value,Brush textColor = null)
-        {
-            StackPanel sp = new StackPanel();
-            sp.Orientation = Orientation.Horizontal;
-            sp.Background = Brushes.White;
-            sp.Children.Add(new Label()
-            {
-                Content = ItemName
-            });
-            sp.Children.Add(new TextBox()
-            {
-                Text = value,
-                
-                MinWidth= 60,
-                FontWeight= FontWeights.Bold,
-                Foreground = textColor != null ? textColor : Brushes.Black,
-            });
-
-            SPtoAddTo.Children.Add(sp); 
         }
 
+        private void OnSaveBtnClick()
+        {
+           
+        }
     }
 }

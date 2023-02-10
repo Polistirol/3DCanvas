@@ -713,6 +713,13 @@ namespace ParserLib.Services.Parsers
                             LineColor = programContext.ContourLineType,
                             IsLeadIn = true
 
+                        }, 
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
                         },
                         new ArcMove
                         {
@@ -725,6 +732,13 @@ namespace ParserLib.Services.Parsers
                             Radius = Math.Abs(radius),
                             CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC1),
                             NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
+                        },                        
+                        new LinearMove()
+                        {
+                            SourceLine = programContext.SourceLine,
+                            IsBeamOn = programContext.IsBeamOn,
+                            LineColor = programContext.ContourLineType,
+                            OriginalLine = line,
                         },
                         new ArcMove
                         {
@@ -738,20 +752,8 @@ namespace ParserLib.Services.Parsers
                             CenterPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pC2),
                             NormalPoint = Create3DPoint(programContext, programContext.ReferenceMove.EndPoint, pN),
                         },
-                        new LinearMove()
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = line,
-                        },
-                        new LinearMove()
-                        {
-                            SourceLine = programContext.SourceLine,
-                            IsBeamOn = programContext.IsBeamOn,
-                            LineColor = programContext.ContourLineType,
-                            OriginalLine = line,
-                        },
+
+
                     }
                 };
 
@@ -1087,36 +1089,16 @@ namespace ParserLib.Services.Parsers
                 else if (axName == 'J') viaPoint.Y = axValueD;
                 else if (axName == 'K') viaPoint.Z = programContext.Is2DProgram ? 0.0 : axValueD;
 
-                //Un modo per ottimizzare questo codice potrebbe essere quello di utilizzare un dizionario per memorizzare le corrispondenze tra i valori di axName e i campi di endPoint e viaPoint, invece di utilizzare una serie di istruzioni if e else if.Ecco un esempio di come potrebbe essere implementato:
-
-                //var fieldMapping = new Dictionary<char, Func<Point3D, double, Point3D>>()
-                //    {
-                //        { 'X', (point, value) => { point.X = value; return point; } },
-                //        { 'Y', (point, value) => { point.Y = value; return point; } },
-                //        { 'Z', (point, value) => { point.Z = programContext.Is2DProgram ? 0.0 : value; return point; } },
-                //        { 'I', (point, value) => { point.X = value; return point; } },
-                //        { 'J', (point, value) => { point.Y = value; return point; } },
-                //        { 'K', (point, value) => { point.Z = programContext.Is2DProgram ? 0.0 : value; return point; } },
-                //    };
-
-                //if (fieldMapping.ContainsKey(axName))
-                //{
-                //    if (axName == 'X' || axName == 'Y' || axName == 'Z')
-                //    {
-                //        endPoint = fieldMapping[axName](endPoint, axValueD);
-                //    }
-                //    else
-                //    {
-                //        viaPoint = fieldMapping[axName](viaPoint, axValueD);
-                //    }
-                //}
             }
 
             (entity as IToolpathEntity).EndPoint = endPoint;
+            (entity as IToolpathEntity).OriginalEndPoint = new Point3D(endPoint.X,endPoint.Y,endPoint.Z);
+
 
             if (entity.EntityType == EEntityType.Arc || entity.EntityType == EEntityType.Circle)
             {
                 (entity as ArcMove).ViaPoint = viaPoint;
+                (entity as ArcMove).OriginalViaPoint = new Point3D(viaPoint.X, viaPoint.Y, viaPoint.Z);
             }
         }
 

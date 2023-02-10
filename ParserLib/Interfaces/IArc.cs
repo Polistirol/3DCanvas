@@ -7,6 +7,7 @@ namespace ParserLib.Interfaces
     public interface IArc : IToolpathEntity
     {
         Point3D ViaPoint { get; set; }
+        Point3D OriginalViaPoint { get; set; }
 
         Point3D NormalPoint { get; set; }
 

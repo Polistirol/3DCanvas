@@ -55,6 +55,7 @@ namespace Canvas3DViewer
             if (!isLeftCtrlDown)
             {
                 PopolateTextBox(p);
+                Wizard.Reset();
             }
             else
             {
@@ -66,26 +67,20 @@ namespace Canvas3DViewer
 
         private void ModifyElement(Path p)
         {
-            #region get element type
-            IToolpathEntity element = p.Tag as ToolpathEntity;
-            if (element.Tag is IMacro  )
-            {
-                    Wizard.SetWizard(element.Tag as IBaseEntity);
-            }
-            else
-            {
-                Wizard.SetWizard(element as IBaseEntity);
-            }
-            #endregion
+            Wizard.SetWizard(p);
         }
 
 
 
         public void PopolateTextBox(Path p)
         {
-            if (p.Tag != null && p.Tag is IToolpathEntity)
+            if (p.Tag != null && p.Tag is IBaseEntity)
             {
-                var entity = (p.Tag as IToolpathEntity);
+                var entity = p.Tag as IToolpathEntity;
+                if (p.Tag is Macro macro)
+                {
+                    entity = macro.Movements[0] as IToolpathEntity;
+                }
 
                 txtLine.Text = entity.OriginalLine.ToString();
                 txtLineNumber.Text = $"Source line: {entity.SourceLine.ToString()}";

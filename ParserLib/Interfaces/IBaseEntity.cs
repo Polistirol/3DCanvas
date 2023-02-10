@@ -18,6 +18,6 @@ namespace ParserLib.Interfaces
         string OriginalLine { get; set; }
 
         object Tag { get; set; }
-        //void Render(Matrix3D U, Matrix3D Un, bool isRot, double Zradius);
+        
     }
 }
