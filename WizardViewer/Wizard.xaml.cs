@@ -232,7 +232,7 @@ namespace WizardViewer
 
         private void OnPreviewBtnClick()
         {
-            move
+            
         }
 
         private void OnRevertBtnClick()

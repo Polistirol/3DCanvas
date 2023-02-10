@@ -737,53 +737,53 @@ namespace PrimaPower
         public void TestRot()
         {
 
-            Vector3D v = new Vector3D(10, 11, 12);
-            Matrix3D m = Matrix3D.Identity;
-            Matrix3D mh = Matrix3D.Identity;
+            //Vector3D v = new Vector3D(10, 11, 12);
+            //Matrix3D m = Matrix3D.Identity;
+            //Matrix3D mh = Matrix3D.Identity;
 
-            m.RotateAt(new Quaternion(new Vector3D(5, 2, 1), 26), new Point3D(5, 5, 5));
-            mh.RotateAt(new Quaternion(new Vector3D(5, 2, 1), 26), new Point3D(5, 5, 5));
+            //m.RotateAt(new Quaternion(new Vector3D(5, 2, 1), 26), new Point3D(5, 5, 5));
+            //mh.RotateAt(new Quaternion(new Vector3D(5, 2, 1), 26), new Point3D(5, 5, 5));
 
-            v = m.Transform(v);
+            //v = m.Transform(v);
 
-            m.SetIdentity();
-            m.OffsetX = 6;
-            m.OffsetY = 4;
-            m.OffsetZ = 7;
-            mh.OffsetX = 6;
-            mh.OffsetY = 4;
-            mh.OffsetZ = 7;
+            //m.SetIdentity();
+            //m.OffsetX = 6;
+            //m.OffsetY = 4;
+            //m.OffsetZ = 7;
+            //mh.OffsetX = 6;
+            //mh.OffsetY = 4;
+            //mh.OffsetZ = 7;
 
-            v = m.Transform(v);
+            //v = m.Transform(v);
 
-            m.SetIdentity();
-            m.RotateAt(new Quaternion(new Vector3D(15, 2, 1), 18), new Point3D(8, 4, 9));
-            mh.RotateAt(new Quaternion(new Vector3D(15, 2, 1), 18), new Point3D(8, 4, 9));
+            //m.SetIdentity();
+            //m.RotateAt(new Quaternion(new Vector3D(15, 2, 1), 18), new Point3D(8, 4, 9));
+            //mh.RotateAt(new Quaternion(new Vector3D(15, 2, 1), 18), new Point3D(8, 4, 9));
 
-            v = m.Transform(v);
+            //v = m.Transform(v);
 
-            m.SetIdentity();
-            m.OffsetX = 8;
-            m.OffsetY = 41;
-            m.OffsetZ = 71;
-            mh.OffsetX = 8;
-            mh.OffsetY = 41;
-            mh.OffsetZ = 71;
+            //m.SetIdentity();
+            //m.OffsetX = 8;
+            //m.OffsetY = 41;
+            //m.OffsetZ = 71;
+            //mh.OffsetX = 8;
+            //mh.OffsetY = 41;
+            //mh.OffsetZ = 71;
 
-            v = m.Transform(v);
+            //v = m.Transform(v);
 
-            mh.Invert();
-            v = mh.Transform(v);
+            //mh.Invert();
+            //v = mh.Transform(v);
 
-            Matrix3D U, Un;
-            Point3D cor;
-            U = Matrix3D.Identity;
-            Un = Matrix3D.Identity;
-            cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
-            Quaternion planeQuat = SetViewPlane("XZ");
+            //Matrix3D U, Un;
+            //Point3D cor;
+            //U = Matrix3D.Identity;
+            //Un = Matrix3D.Identity;
+            //cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
+            //Quaternion planeQuat = SetViewPlane("XZ");
 
-             U.RotateAt(planeQuat, centerRotation);
-            Un.RotateAt(planeQuat, new Point3D(0, 0, 0));
+            // U.RotateAt(planeQuat, centerRotation);
+            //Un.RotateAt(planeQuat, new Point3D(0, 0, 0));
             HistoryU.Invert();
             HistoryUn.Invert();
             foreach (var item in moves)
