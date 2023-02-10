@@ -61,8 +61,11 @@ namespace PrimaPower
         public void DrawProgram(string fullName, bool isRedrawing = false)
         {
             Stopwatch ost = new Stopwatch();
-            ost.Start();        
-           Filename= fullName;
+            ost.Start();
+            HistoryU.SetIdentity();
+            HistoryUn.SetIdentity();
+            HistoryZRadius = 1;
+            Filename = fullName;
             try
             {
                 //ost.Start();
@@ -96,7 +99,6 @@ namespace PrimaPower
 
                         else if (item.EntityType == EEntityType.Arc)
                             DrawArc(item as ArcMove,true);
-
                     }
                     else
                     {
@@ -112,7 +114,6 @@ namespace PrimaPower
                             //    else
                             //        DrawArc(move as ArcMove);
                             //}
-
                         }
                         else if (item.EntityType == EEntityType.Line)
                             DrawLine(item as LinearMove);
@@ -572,16 +573,15 @@ namespace PrimaPower
             Matrix3D U = Matrix3D.Identity;
             Matrix3D Un = Matrix3D.Identity;
             Point3D PZ = new Point3D(Mouse.GetPosition(canvas1).X, Mouse.GetPosition(canvas1).Y, cor.Z);
-
             U.ScaleAt(new Vector3D(Z, Z, Z), PZ);
             HistoryU.ScaleAt(new Vector3D(Z, Z, Z), PZ);
-
+            HistoryZRadius *= Z;
             cor = U.Transform(cor);
 
             centerRotation.X = cor.Y;
             centerRotation.Y = cor.X;
             centerRotation.Z = cor.Z;
-            HistoryZRadius *= Z;
+            
             foreach (var item in moves)
             {
                 item.Render(U, Un, false, Z);
@@ -786,6 +786,7 @@ namespace PrimaPower
             //Un.RotateAt(planeQuat, new Point3D(0, 0, 0));
             HistoryU.Invert();
             HistoryUn.Invert();
+            HistoryZRadius = 1 / HistoryZRadius;
             foreach (var item in moves)
             {
                 item.Render(HistoryU, HistoryUn, true, HistoryZRadius);
