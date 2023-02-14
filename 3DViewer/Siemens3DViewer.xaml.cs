@@ -9,6 +9,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
+using System.Runtime.ConstrainedExecution;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -27,16 +29,13 @@ namespace PrimaPower
     {
 
         private List<IBaseEntity> moves;
-        
         public string Filename { get; set; }
-
         private bool CanvasEventsEnabled { get; set; }
-        private bool UseDefaultEvents { get; set; }
-        
+
 
         private Point previousCoordinate;
         private Point3D centerRotation = new Point3D(150, 150, 0);
-        
+
         private From3DTo2DPointConversion from3Dto2DPointConversion = null;
         private Brush _originalColor = null;
 
@@ -44,10 +43,16 @@ namespace PrimaPower
 
         Matrix3D HistoryU = Matrix3D.Identity;
         Matrix3D HistoryUn = Matrix3D.Identity;
+        Matrix3D HistoryAxes = Matrix3D.Identity; 
         double HistoryZRadius = 1;
 
 
+        #region Actions
+        public Action<Path> EntityClicked;
+        public Action<Path> AxisClicked;
+        public Action KeyPressed;
 
+        #endregion
 
         public Siemens3DViewer()
         {
@@ -55,17 +60,15 @@ namespace PrimaPower
             System.Threading.Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en-EN");
             from3Dto2DPointConversion = new From3DTo2DPointConversion();
             axes.BuildAxes();
-            
+
         }
-        
+
         public void DrawProgram(string fullName, bool isRedrawing = false)
         {
             Stopwatch ost = new Stopwatch();
             ost.Start();
-            HistoryU.SetIdentity();
-            HistoryUn.SetIdentity();
-            HistoryZRadius = 1;
-            Filename = fullName;
+            ResetHistoryItems();
+;           Filename = fullName;
             try
             {
                 //ost.Start();
@@ -77,7 +80,7 @@ namespace PrimaPower
                     parser = new Parser(new ParseMpf(fullName));
                 else
                     MessageBox.Show("File extension invalid");
-                
+
 
                 var programContext = parser.GetProgramContext();
                 moves = (List<IBaseEntity>)programContext.Moves;
@@ -92,28 +95,34 @@ namespace PrimaPower
 
                 foreach (var item in moves)
                 {
-                    if (item.IsBeamOn == false && moves.Count < 2000)
+                    if (item.IsBeamOn == false)
                     {
-                        if (item.EntityType == EEntityType.Line )
-                            DrawLine(item, true);
+                        if (moves.Count < 5000)
+                        {
+                            if (item.EntityType == EEntityType.Line)
+                                DrawLine(item, true);
 
-                        else if (item.EntityType == EEntityType.Arc)
-                            DrawArc(item as ArcMove,true);
+                            else if (item.EntityType == EEntityType.Arc)
+                                DrawArc(item as ArcMove, true);
+                        }
+                        else
+                            continue;
+
                     }
                     else
                     {
                         if (item is IMacro macro)
                         {
-                            DrawMacro(macro as IMacro);
-                            //foreach (var move in macro.Movements)
-                            //{
-                            //    if (move.EntityType == EEntityType.Line)
-                            //    {
-                            //        DrawLine(move as LinearMove);
-                            //    }
-                            //    else
-                            //        DrawArc(move as ArcMove);
-                            //}
+                            //DrawMacro(macro as IMacro);
+                            foreach (var move in macro.Movements)
+                            {
+                                if (move.EntityType == EEntityType.Line)
+                                {
+                                    DrawLine(move as LinearMove);
+                                }
+                                else
+                                    DrawArc(move as ArcMove);
+                            }
                         }
                         else if (item.EntityType == EEntityType.Line)
                             DrawLine(item as LinearMove);
@@ -124,7 +133,7 @@ namespace PrimaPower
                 }
 
                 st.Stop();
-               InitialTransform();
+                InitialTransform();
                 Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {st.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)
@@ -157,33 +166,33 @@ namespace PrimaPower
             foreach (var move in macro.Movements)
             {
                 if (move is LinearMove)
-                    DrawLine (pf, move as LinearMove);
+                    DrawLine(pf, move as LinearMove);
                 else
                     DrawArc(pf, move as ArcMove);
-                 
+
                 move.GeometryPath = geometry;
             }
             p.Tag = macro as IBaseEntity;
-            
+
             AddPathMouseEvents(p);
             canvas1.Children.Add(p);
         }
-        public void DrawAxes(string plane = "XY" )
+        public void DrawAxes(string plane = "XY")
         {
             canvasAxes.Children.Clear();
             axes.BuildAxes();
             Matrix3D U, Un;
             U = Matrix3D.Identity;
             Un = Matrix3D.Identity;
-            
+
             Quaternion planeQuat = SetViewPlane(plane);
-            
-            U.RotateAt(planeQuat, axes.OriginPoint);          
+
+            U.RotateAt(planeQuat, axes.OriginPoint);
             Un.RotateAt(planeQuat, new Point3D(0, 0, 0));
 
             foreach (var item in axes)
             {
-                DrawLine(item as LinearMove,false,true);
+                DrawLine(item as LinearMove, false, true);
                 item.Render(U, Un, false, 1);
             }
 
@@ -292,9 +301,9 @@ namespace PrimaPower
             p.Stroke = GetLineColor(linearMove.LineColor);
             if (isAxes)
             {
-                p.Tag = ViewerHelper.EPathType.Axe;
                 AddPathMouseEvents(p);
                 canvasAxes.Children.Add(p);
+                p.Tag = linearMove;
                 return;
             }
             else
@@ -317,7 +326,7 @@ namespace PrimaPower
         #endregion 
 
         #region Initial transform
-        public void InitialTransform(string plane="")
+        public void InitialTransform(string plane = "")
         {
             Matrix3D U, Un;
             Point3D cor;
@@ -343,9 +352,6 @@ namespace PrimaPower
             U.RotateAt(planeQuat, centerRotation);
             Un.RotateAt(planeQuat, new Point3D(0, 0, 0));
 
-            //HistoryU.RotateAt(planeQuat, centerRotation);
-            //HistoryUn.RotateAt(planeQuat, new Point3D(0, 0, 0));
-
             foreach (var item in moves)
             {
                 item.Render(U, Un, false, 1);
@@ -366,8 +372,6 @@ namespace PrimaPower
             double newZ = (dX > dY) ? (canvas1.ActualWidth - margin) / dX : (canvas1.ActualHeight - margin) / dY;
 
             U.ScaleAt(new Vector3D(newZ, newZ, newZ), cor);
-            //HistoryU.ScaleAt(new Vector3D(newZ, newZ, newZ), cor);
-           // HistoryZRadius *= newZ;
             foreach (var item in moves)
             {
                 item.Render(U, Un, false, newZ);
@@ -384,7 +388,10 @@ namespace PrimaPower
             yMax = double.NegativeInfinity;
             foreach (var item in moves)
             {
-                if (!item.IsBeamOn) { continue; }
+                if (!item.IsBeamOn)
+                {
+                    continue;
+                }
                 var entity = item; //(item as IToolpathEntity);
                 if (double.IsNegativeInfinity(entity.BoundingBox.Item1) || double.IsInfinity(entity.BoundingBox.Item2) || double.IsNegativeInfinity(entity.BoundingBox.Item3) || double.IsInfinity(entity.BoundingBox.Item4))
                     continue;
@@ -406,10 +413,6 @@ namespace PrimaPower
 
             U.OffsetX = xMedCanvas - xMed;
             U.OffsetY = yMedCanvas - yMed;
-
-            //HistoryU.OffsetX += xMedCanvas - xMed;
-            //HistoryU.OffsetY += yMedCanvas - yMed;
-
             cor = U.Transform(cor);
 
             centerRotation.X = yMedCanvas;
@@ -417,10 +420,7 @@ namespace PrimaPower
             centerRotation.Z = cor.Z;
 
             cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
-            //EllipseGeometry centro = new EllipseGeometry(new Point(cor.X, cor.Y), 10.0, 10.0);
-            //Ellipse e = new Ellipse();
 
-            //canvas1.Children.Add(new Ellipse( )
             foreach (var item in moves)
             {
                 item.Render(U, Un, false, 1);
@@ -442,11 +442,11 @@ namespace PrimaPower
                 {
                     OnAxisClicked(p);
                 }
-                else 
-                {   
+                else
+                {
                     OnEntityClicked(p);
                 }
-                
+
             }
         }
 
@@ -464,9 +464,9 @@ namespace PrimaPower
         }
 
         private void canvas1_MouseDown(object sender, MouseButtonEventArgs e)
-        { 
+        {
             var canvas = sender as Canvas;
-            if (canvas.Name == "canvas1")                
+            if (canvas.Name == "canvas1")
                 previousCoordinate = Mouse.GetPosition(canvas1);
         }
 
@@ -509,7 +509,7 @@ namespace PrimaPower
 
                     U = Matrix3D.Identity;
                     Un = Matrix3D.Identity;
-
+                    HistoryAxes.RotateAt(Q, axes.OriginPoint);
                     U.RotateAt(Q, axes.OriginPoint);
                     Un.RotateAt(Q, new Point3D(0, 0, 0));
                     foreach (var item in axes)
@@ -581,7 +581,7 @@ namespace PrimaPower
             centerRotation.X = cor.Y;
             centerRotation.Y = cor.X;
             centerRotation.Z = cor.Z;
-            
+
             foreach (var item in moves)
             {
                 item.Render(U, Un, false, Z);
@@ -592,7 +592,7 @@ namespace PrimaPower
         #region Other Interactions
         public void RapidsOnOff()
         {
-            foreach ( var child in canvas1.Children)
+            foreach (var child in canvas1.Children)
             {
                 try
                 {
@@ -600,17 +600,24 @@ namespace PrimaPower
                     ToolpathEntity element = c.Tag as ToolpathEntity;
                     if (!element.IsBeamOn)
                     {
-                        c.Visibility = c.Visibility == Visibility.Visible ? Visibility.Hidden  : Visibility.Visible;
+                        c.Visibility = c.Visibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
                     }
                 }
-                catch {continue;}
+                catch { continue; }
             }
         }
         #endregion
 
         #region Utility methods 
 
+        private void ResetHistoryItems()
+        {
+            HistoryAxes.SetIdentity();
+            HistoryU.SetIdentity();
+            HistoryUn.SetIdentity();
+            HistoryZRadius = 1;
 
+        }
         public void ClearCanvas()
         {
             if (canvas1.Children != null)
@@ -688,25 +695,9 @@ namespace PrimaPower
             CanvasEventsEnabled = newStatus;
         }
 
-        public void SetUseDefaultEvents(bool use)
+
+        public bool isValidPlaneString(string plane)
         {
-            UseDefaultEvents= use;  
-        }
-
-        public void SetViewFromPlane(string plane)
-        {
-            if (isValidPlaneString(plane))
-            {
-                axes = new Axes();
-                axes.BuildAxes();
-                canvas1.Children.Clear();
-                DrawProgram(Filename, false);
-                InitialTransform(plane);            
-            }
-
-        }
-
-        public bool isValidPlaneString(string plane) {
             return (plane == "XY" || plane == "XZ" || plane == "YZ") ? true : false;
         }
 
@@ -716,95 +707,90 @@ namespace PrimaPower
         #region Actions Default Logic 
         public void OnAxisClicked(Path p = null)
         {
-                    IBaseEntity axe = p.Tag as IBaseEntity;
-                    axes = new Axes();
-                    axes.BuildAxes();
-                    canvas1.Children.Clear();
-                    DrawProgram(Filename, false);
-                    InitialTransform(axe.Tag.ToString());
+            IBaseEntity axe = p.Tag as IBaseEntity;
+            string axePlane = axe.Tag.ToString();
+            RotateViewToPlane(axePlane);
+            Console.WriteLine($"Axe clicked {axePlane}");
+                
             AxisClicked?.Invoke(p);
         }
 
         private void OnEntityClicked(Path p)
         {
-            if (UseDefaultEvents)
-            {
-
-            }
+            Console.WriteLine($"Entity clicked {p.Tag.ToString()}");
             EntityClicked?.Invoke(p);
         }
 
+
         public void TestRot()
         {
-
-            //Vector3D v = new Vector3D(10, 11, 12);
-            //Matrix3D m = Matrix3D.Identity;
-            //Matrix3D mh = Matrix3D.Identity;
-
-            //m.RotateAt(new Quaternion(new Vector3D(5, 2, 1), 26), new Point3D(5, 5, 5));
-            //mh.RotateAt(new Quaternion(new Vector3D(5, 2, 1), 26), new Point3D(5, 5, 5));
-
-            //v = m.Transform(v);
-
-            //m.SetIdentity();
-            //m.OffsetX = 6;
-            //m.OffsetY = 4;
-            //m.OffsetZ = 7;
-            //mh.OffsetX = 6;
-            //mh.OffsetY = 4;
-            //mh.OffsetZ = 7;
-
-            //v = m.Transform(v);
-
-            //m.SetIdentity();
-            //m.RotateAt(new Quaternion(new Vector3D(15, 2, 1), 18), new Point3D(8, 4, 9));
-            //mh.RotateAt(new Quaternion(new Vector3D(15, 2, 1), 18), new Point3D(8, 4, 9));
-
-            //v = m.Transform(v);
-
-            //m.SetIdentity();
-            //m.OffsetX = 8;
-            //m.OffsetY = 41;
-            //m.OffsetZ = 71;
-            //mh.OffsetX = 8;
-            //mh.OffsetY = 41;
-            //mh.OffsetZ = 71;
-
-            //v = m.Transform(v);
-
-            //mh.Invert();
-            //v = mh.Transform(v);
-
-            //Matrix3D U, Un;
-            //Point3D cor;
-            //U = Matrix3D.Identity;
-            //Un = Matrix3D.Identity;
-            //cor = new Point3D(centerRotation.Y, centerRotation.X, centerRotation.Z);
-            //Quaternion planeQuat = SetViewPlane("XZ");
-
-            // U.RotateAt(planeQuat, centerRotation);
-            //Un.RotateAt(planeQuat, new Point3D(0, 0, 0));
-            HistoryU.Invert();
-            HistoryUn.Invert();
-            HistoryZRadius = 1 / HistoryZRadius;
-            foreach (var item in moves)
-            {
-                item.Render(HistoryU, HistoryUn, true, HistoryZRadius);
-            }
-            HistoryU.SetIdentity();
-            HistoryUn.SetIdentity();
-            HistoryZRadius = 1;
+            RotateViewToPlane("XZ");
         }
 
         #endregion
 
-        #region Actions
-        public Action<Path> EntityClicked;
-        public Action<Path> AxisClicked;
-        public Action KeyPressed;
+        public void RotateViewToPlane(string plane)
+        {       
+            Matrix3D U = Matrix3D.Identity;
+            Matrix3D Un = Matrix3D.Identity;
+            Point3D cor = new Point3D(centerRotation.X, centerRotation.Y, centerRotation.Z);
+            double xMin, xMax, yMin, yMax;
+            List<string> planes = new List<string> { "XY", "XZ", "YZ" };
+            plane = plane.ToUpper().Trim();
+            if (string.IsNullOrWhiteSpace(plane) || !planes.Contains(plane))
+            {
+                Console.WriteLine("empty plane");
+                return;
+            }
 
-        #endregion
+            else
+            {
+                HistoryU.Invert();
+                HistoryUn.Invert();
+                HistoryAxes.Invert();
+                HistoryZRadius = 1 / HistoryZRadius;
 
+                foreach (var item in moves)
+                {
+                    item.Render(HistoryU, HistoryUn, true, HistoryZRadius);
+                }
+                foreach (var item in axes)
+                {
+                    item.Render(HistoryAxes, HistoryUn, true, 1);
+                }
+                //ShiftToCenter(ref U, ref Un, ref cor, out xMin, out xMax, out yMin, out yMax);
+                //SetZoom(U, Un, cor, xMin, xMax, yMin, yMax);
+                ResetHistoryItems();
+
+                //If plane is different than XY , rotate again to match the desired plane  
+
+                if (plane != "XY")
+                {
+                    //InitialTransform(plane);
+                    Quaternion planeQuat = SetViewPlane(plane);
+                    HistoryU.RotateAt(planeQuat, centerRotation);
+                    HistoryUn.RotateAt(planeQuat, new Point3D(0, 0, 0));
+                    HistoryAxes.RotateAt(planeQuat, axes.OriginPoint);
+                    foreach (var item in moves)
+                    {
+                        item.Render(HistoryU, HistoryUn, true, HistoryZRadius);
+                    }
+                    foreach (var item in axes)
+                    {
+                        item.Render(HistoryAxes, HistoryUn, true, 1);
+                    }
+
+                    ShiftToCenter(ref U, ref Un, ref cor, out xMin, out xMax, out yMin, out yMax);
+                    //SetZoom(U, Un, cor, xMin, xMax, yMin, yMax);
+                }
+
+
+            }
+
+        }
 
     }
+
+
 }
+

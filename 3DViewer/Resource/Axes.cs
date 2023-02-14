@@ -37,7 +37,7 @@ namespace PrimaPower.Resource
             var ZShaft = new LinearMove()
             {
                 StartPoint = OriginPoint,
-                EndPoint = new Point3D(OriginPoint.X, OriginPoint.Y, OriginPoint.Z -ShaftLenght),
+                EndPoint = new Point3D(OriginPoint.X, OriginPoint.Y, OriginPoint.Z +ShaftLenght),
                 LineColor = ParserLib.Helpers.TechnoHelper.ELineType.CutLine2,
                 IsBeamOn = true,
                 Tag = "XY"

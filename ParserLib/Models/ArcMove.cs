@@ -10,7 +10,6 @@ namespace ParserLib.Models
     public class ArcMove : ToolpathEntity, IArc
     {
 
-
         private double strokeThickness = 1;
         private double degreeToRad = Math.PI / 180;
         private Vector3D vpn = new Vector3D(0, 0, 1);
@@ -61,7 +60,7 @@ namespace ParserLib.Models
             double e = Radius * degreeToRad * Math.Abs(angleBetweenNormalAndViewPlaneNormal - 90);
             RotationAngle = -Vector.AngleBetween(new Vector(intersection.X, intersection.Y), VectorForRotationAngleCalculation);
 
-            if (e < strokeThickness / 2)
+            if (e < strokeThickness / 1000)
             {
                 Point3D StartPointDump = new Point3D(StartPoint.X, StartPoint.Y, StartPoint.Z);
                 Point3D EndPointDump = new Point3D(EndPoint.X, EndPoint.Y, EndPoint.Z);

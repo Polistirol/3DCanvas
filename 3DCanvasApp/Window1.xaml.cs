@@ -47,8 +47,7 @@ namespace Canvas3DViewer
         }
         private void OnAxisClicked(Path p)
         {
-            Console.WriteLine("Axe clicked");
-
+            
         }
         private void OnEntityClicked(Path p)
         {
@@ -109,7 +108,7 @@ namespace Canvas3DViewer
             var fi = e.AddedItems[0] as CncFile;
             Filename = fi.FullPath;
             Viewer3D.DrawProgram(Filename);
-            Viewer3D.DrawAxes();
+            //Viewer3D.DrawAxes();
             Wizard.Reset();
             
 
@@ -136,7 +135,6 @@ namespace Canvas3DViewer
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             Viewer3D.SetCanvasEventsEnabled(true);
-            Viewer3D.SetUseDefaultEvents(true);
             Viewer3D.EntityClicked += OnEntityClicked;
             Viewer3D.AxisClicked += OnAxisClicked;
 
@@ -156,16 +154,16 @@ namespace Canvas3DViewer
             }
             if (e.Key == Key.J && isLeftCtrlDown)
             {
-                Viewer3D.SetViewFromPlane("XY");
+                Viewer3D.RotateViewToPlane("XY");
                 
             }
             if (e.Key == Key.K && isLeftCtrlDown)
             {
-                Viewer3D.SetViewFromPlane("XZ");
+                Viewer3D.RotateViewToPlane("XZ");
             }
             if (e.Key == Key.L && isLeftCtrlDown)
             {
-                Viewer3D.SetViewFromPlane("YZ");
+                Viewer3D.RotateViewToPlane("YZ");
             }
             if (e.Key == Key.Q && isLeftCtrlDown)
             {
