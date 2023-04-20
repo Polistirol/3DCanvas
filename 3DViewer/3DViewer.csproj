@@ -32,9 +32,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ParserLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Test3DCanvas\Test3DCanvas\lib\ParserLib.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\3DCanvasApp\packages\Newtonsoft.Json.13.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -58,9 +57,11 @@
     </Page>
     <Compile Include="Converters\FontWeightConverter.cs" />
     <Compile Include="Converters\From3DTo2DPointConversion.cs" />
+    <Compile Include="Converters\FromCustomSweepDirectionToArcSweepDirection.cs" />
     <Compile Include="Resource\Axes.cs" />
-    <Compile Include="Resource\PathDataObject.cs" />
-    <Compile Include="Resource\ViewerHelper.cs" />
+    <Compile Include="Resource\ColorsHelper.cs" />
+    <Compile Include="Resource\Snapshotter.cs" />
+    <Compile Include="Resource\Tracer.cs" />
     <Compile Include="Siemens3DViewer.xaml.cs">
       <DependentUpon>Siemens3DViewer.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -84,10 +85,17 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ParserLibrary\ParserLibrary.csproj">
+      <Project>{20979148-5201-4d4c-895b-859defd88199}</Project>
+      <Name>ParserLibrary</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

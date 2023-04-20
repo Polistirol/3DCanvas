@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:gl="clr-namespace:System.Globalization;assembly=mscorlib"
         xmlns:local="clr-namespace:Canvas3DViewer" xmlns:conv="clr-namespace:Canvas3DViewer.Converters"
-        xmlns:PrimaPower="clr-namespace:PrimaPower;assembly=3DViewer" xmlns:WizardViewer="clr-namespace:WizardViewer;assembly=WizardViewer" x:Class="Canvas3DViewer.Window1"
+        xmlns:PrimaPower="clr-namespace:PrimaPower;assembly=3DViewer"  x:Class="Canvas3DViewer.Window1"
         mc:Ignorable="d"
         Title="Window1" Height="600" Width="1024" FontFamily="Comfortaa" Loaded="Window_Loaded" KeyDown="Window_KeyDown"
     >
@@ -65,7 +65,7 @@
 
             <ComboBox Grid.Row="2" Margin="5,5,5,5" ItemsSource="{Binding ExtFiles}" SelectedItem="{Binding SelectedExtensionFile}" />
 
-            <ListView Padding="0" x:Name="listView" ItemsSource="{Binding CncFiles}" Grid.Row="3" SelectionChanged="ListView_SelectionChanged" SnapsToDevicePixels="True">
+            <ListView Padding="0" x:Name="listView" ItemsSource="{Binding CncFiles}" Grid.Row="3" SelectionChanged="ListView_SelectionChanged" SnapsToDevicePixels="True" MouseDown="listView_MouseDown">
                 <ListView.Resources>
                     <!-- attempt to override selection color -->
                     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightColorKey}" Color="Green" />
@@ -106,9 +106,11 @@
 
 
         <PrimaPower:Siemens3DViewer  Grid.Column="1" ClipToBounds="True" x:Name="Viewer3D" Background="#2d2d2d"  />
+        <TextBox x:Name="restartBox" HorizontalAlignment="Left" Margin="696,109,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="55" Grid.Column="1" Height="20" TextChanged="restartBox_TextChanged"/>
+        <!--<Slider x:Name="progressBar" Canvas.Left="195"  Grid.Column="1" Grid.Row="2" Minimum="0" Maximum="10" IsSnapToTickEnabled="True"  ValueChanged="ProgressOnValueChanged" SmallChange="1" />-->
 
 
-        <WizardViewer:UserControl1 x:Name="Wizard" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+
 
 
     </Grid>

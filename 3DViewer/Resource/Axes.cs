@@ -1,7 +1,8 @@
-﻿using ParserLib.Interfaces;
-using ParserLib.Models;
+﻿using ParserLibrary.Interfaces;
+using ParserLibrary.Models;
 using System.Collections.Generic;
-using System.Windows.Media.Media3D;
+//using System.Windows.Media.Media3D;
+using ParserLibrary.Models.Media;
 
 namespace PrimaPower.Resource
 {
@@ -20,7 +21,7 @@ namespace PrimaPower.Resource
                 StartPoint = OriginPoint,
                 
                 EndPoint = new Point3D(OriginPoint.X +ShaftLenght, OriginPoint.Y, OriginPoint.Z),
-                LineColor = ParserLib.Helpers.TechnoHelper.ELineType.CutLine3,
+                LineColor = ParserLibrary.Helpers.TechnoHelper.ELineType.CutLine3,
                 IsBeamOn = true,
                 Tag = "XZ"
             };     
@@ -29,7 +30,7 @@ namespace PrimaPower.Resource
             {
                 StartPoint = OriginPoint,
                 EndPoint = new Point3D(OriginPoint.X, OriginPoint.Y+ ShaftLenght, OriginPoint.Z),
-                LineColor = ParserLib.Helpers.TechnoHelper.ELineType.CutLine1,
+                LineColor = ParserLibrary.Helpers.TechnoHelper.ELineType.CutLine1,
                 IsBeamOn = true,
                 Tag = "YZ"
             };        
@@ -38,7 +39,7 @@ namespace PrimaPower.Resource
             {
                 StartPoint = OriginPoint,
                 EndPoint = new Point3D(OriginPoint.X, OriginPoint.Y, OriginPoint.Z +ShaftLenght),
-                LineColor = ParserLib.Helpers.TechnoHelper.ELineType.CutLine2,
+                LineColor = ParserLibrary.Helpers.TechnoHelper.ELineType.CutLine2,
                 IsBeamOn = true,
                 Tag = "XY"
             };

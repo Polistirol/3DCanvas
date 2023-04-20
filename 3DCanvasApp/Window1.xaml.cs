@@ -1,25 +1,18 @@
 ﻿using Canvas3DViewer.Converters;
 using Canvas3DViewer.Models;
 using Canvas3DViewer.ViewModels;
-using ParserLib;
-using ParserLib.Interfaces;
-using ParserLib.Interfaces.Macros;
-using ParserLib.Models;
-using ParserLib.Services.Parsers;
+using ParserLibrary.Interfaces;
+using ParserLibrary.Models;
+using ParserLibrary.Models.Media;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Reflection;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
-using WizardViewer;
-using static ParserLib.Helpers.TechnoHelper;
 
 namespace Canvas3DViewer
 {
@@ -41,6 +34,14 @@ namespace Canvas3DViewer
 
         }
 
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            Viewer3D.SetCanvasInteractionEnabled(true);
+            Viewer3D.EntityClicked += OnEntityClicked;
+            Viewer3D.AxisClicked += OnAxisClicked;
+
+        }
+
         private string CreateStringPoint(Point3D p, string s)
         {
             return $"{s} X:{Math.Round(p.X, 3)} Y:{Math.Round(p.Y, 3)} Z:{Math.Round(p.Z, 3)}";
@@ -51,23 +52,9 @@ namespace Canvas3DViewer
         }
         private void OnEntityClicked(Path p)
         {
-            if (!isLeftCtrlDown)
-            {
-                PopolateTextBox(p);
-                Wizard.Reset();
-            }
-            else
-            {
-                ModifyElement(p);
-            }
-
-
+            PopolateTextBox(p);
         }
 
-        private void ModifyElement(Path p)
-        {
-            Wizard.SetWizard(p);
-        }
 
 
 
@@ -108,10 +95,7 @@ namespace Canvas3DViewer
             var fi = e.AddedItems[0] as CncFile;
             Filename = fi.FullPath;
             Viewer3D.DrawProgram(Filename);
-            //Viewer3D.DrawAxes();
-            Wizard.Reset();
             
-
         }
 
         private void txtLine_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -122,7 +106,6 @@ namespace Canvas3DViewer
                 {
                     var nppDir = @"C:\Program Files\Notepad++";
                     var nppExePath = System.IO.Path.Combine(nppDir, "Notepad++.exe");
-
                     var nppReadmePath = System.IO.Path.Combine(nppDir, Filename);
                     var line = int.Parse(txtLineNumber.Text.Replace("Source line: ", ""));
                     var sb = new StringBuilder();
@@ -132,13 +115,7 @@ namespace Canvas3DViewer
             }
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            Viewer3D.SetCanvasEventsEnabled(true);
-            Viewer3D.EntityClicked += OnEntityClicked;
-            Viewer3D.AxisClicked += OnAxisClicked;
 
-        }
 
         private bool isLeftCtrlDown
         {
@@ -150,12 +127,11 @@ namespace Canvas3DViewer
             //Console.WriteLine(e.Key.ToString());
             if (e.Key == Key.S && isLeftCtrlDown)
             {
-                Viewer3D.RapidsOnOff();
+                Viewer3D.ShowHideRapids();
             }
             if (e.Key == Key.J && isLeftCtrlDown)
             {
-                Viewer3D.RotateViewToPlane("XY");
-                
+                Viewer3D.RotateViewToPlane("XY");  
             }
             if (e.Key == Key.K && isLeftCtrlDown)
             {
@@ -173,6 +149,12 @@ namespace Canvas3DViewer
             {
                 DisplayHelpBox();
             }
+            if (e.Key == Key.P && isLeftCtrlDown)
+            {
+                
+                
+            }
+
         }
 
         private void DisplayHelpBox()
@@ -184,6 +166,32 @@ namespace Canvas3DViewer
                 "CTRL+L = YZ view \n" +
                 "\n" +
                 "CTRL+H = Help");
+        }
+
+        private void restartBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            TextBox textBox = sender as TextBox;
+            string value = textBox.Text;
+            int line;
+            if (int.TryParse(value, out line))
+            {
+                Viewer3D.RestartTrace(line);
+                Viewer3D.UpdateProgressBar( line);
+            }
+        }
+
+        private void listView_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Middle && e.ButtonState == MouseButtonState.Pressed)
+            {
+                var item = ((ListViewItem)sender).Content;
+                //if (e.AddedItems.Count == 0) return;
+                //var fi = e.AddedItems[0] as CncFile;
+                //Filename = fi.FullPath;
+                
+            }
+            
+
         }
     }
 }

@@ -1,8 +1,9 @@
 ﻿using ParserLib;
-using ParserLib.Interfaces;
-using ParserLib.Interfaces.Macros;
-using ParserLib.Models;
-using ParserLib.Services.Parsers;
+using ParserLibrary.Interfaces;
+using ParserLibrary.Interfaces.Macros;
+using ParserLibrary.Models;
+using ParserLibrary.Models.Media;
+using ParserLibrary.Services.Parsers;
 using PrimaPower.Converters;
 using PrimaPower.Resource;
 using System;
@@ -10,15 +11,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.ConstrainedExecution;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
-using static ParserLib.Helpers.TechnoHelper;
+using static ParserLibrary.Helpers.TechnoHelper;
 
 namespace PrimaPower
 {
@@ -30,27 +29,34 @@ namespace PrimaPower
 
         private List<IBaseEntity> moves;
         public string Filename { get; set; }
-        private bool CanvasEventsEnabled { get; set; }
-
+        private bool CanvasInteractionEnabled { get; set; }
+        
+        private Axes Axes = new Axes();
+        public IProgramContext ProgramContext { get; set; }
 
         private Point previousCoordinate;
         private Point3D centerRotation = new Point3D(150, 150, 0);
 
         private From3DTo2DPointConversion from3Dto2DPointConversion = null;
+        private FromCustomSweepDirectionToArcSweepDirection fromCustomSweepDirectionToArcSweepeDirection = null;
         private Brush _originalColor = null;
 
-        private Axes axes = new Axes();
+        private Tracer Tracer;
+        private Snapshotter Snapshotter;
+        
 
         Matrix3D HistoryU = Matrix3D.Identity;
         Matrix3D HistoryUn = Matrix3D.Identity;
         Matrix3D HistoryAxes = Matrix3D.Identity; 
         double HistoryZRadius = 1;
 
-
         #region Actions
         public Action<Path> EntityClicked;
         public Action<Path> AxisClicked;
         public Action KeyPressed;
+        public Action<string> SnapshotTaken;
+        
+        
 
         #endregion
 
@@ -59,11 +65,13 @@ namespace PrimaPower
             InitializeComponent();
             System.Threading.Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en-EN");
             from3Dto2DPointConversion = new From3DTo2DPointConversion();
-            axes.BuildAxes();
-
+            fromCustomSweepDirectionToArcSweepeDirection = new FromCustomSweepDirectionToArcSweepDirection();
+            Tracer = new Tracer();
+            Snapshotter = new Snapshotter();
+            Axes.BuildAxes();   
         }
 
-        public void DrawProgram(string fullName, bool isRedrawing = false)
+        public void DrawProgram(string fullName)
         {
             Stopwatch ost = new Stopwatch();
             ost.Start();
@@ -82,16 +90,18 @@ namespace PrimaPower
                     MessageBox.Show("File extension invalid");
 
 
-                var programContext = parser.GetProgramContext();
-                moves = (List<IBaseEntity>)programContext.Moves;
+                ProgramContext = parser.GetProgramContext() ;
+                moves = (List<IBaseEntity>)ProgramContext.Moves;
+                Tracer.SetProgramContext(ProgramContext);
+
                 //ost.Stop();
                 //Console.WriteLine($"Time to obtain moves of: {System.IO.Path.GetFileName(fullName)} is {ost.ElapsedMilliseconds}ms");
-
+                     
                 Stopwatch st = Stopwatch.StartNew();
 
                 if (moves == null) return;
 
-                centerRotation = programContext.CenterRotationPoint;
+                centerRotation = ProgramContext.CenterRotationPoint;
 
                 foreach (var item in moves)
                 {
@@ -107,33 +117,28 @@ namespace PrimaPower
                         }
                         else
                             continue;
-
                     }
                     else
                     {
                         if (item is IMacro macro)
                         {
-                            //DrawMacro(macro as IMacro);
-                            foreach (var move in macro.Movements)
-                            {
-                                if (move.EntityType == EEntityType.Line)
-                                {
-                                    DrawLine(move as LinearMove);
-                                }
-                                else
-                                    DrawArc(move as ArcMove);
-                            }
+                            DrawMacro(macro as IMacro);
                         }
                         else if (item.EntityType == EEntityType.Line)
                             DrawLine(item as LinearMove);
                         else if (item.EntityType == EEntityType.Arc)
                             DrawArc(item as ArcMove);
-
                     }
                 }
-
                 st.Stop();
                 InitialTransform();
+
+                Tracer.SetPathsCollection(canvas1.Children);
+
+                progressBar.Maximum = 1+ ProgramContext.Moves.LastOrDefault().SourceLine;
+                progressBar.Minimum = ProgramContext.Moves.FirstOrDefault().SourceLine;
+                progressBar.Value = progressBar.Minimum;
+                
                 Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {st.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)
@@ -141,6 +146,9 @@ namespace PrimaPower
                 Console.WriteLine(ex.Message);
             }
         }
+
+
+
 
         #region Drawers
         public void DrawMacro(IMacro macro)
@@ -153,7 +161,7 @@ namespace PrimaPower
             Path p = new Path()
             {
                 StrokeThickness = 1,
-                Stroke = GetLineColor(firstMacroMovement.LineColor)
+                Stroke = ColorsHelper.GetLineColor(firstMacroMovement.LineColor)
             };
             PathGeometry geometry = new PathGeometry();
             PathFigure pf = new PathFigure();
@@ -173,24 +181,24 @@ namespace PrimaPower
                 move.GeometryPath = geometry;
             }
             p.Tag = macro as IBaseEntity;
-
+            UpdateBoundingBox(macro);
             AddPathMouseEvents(p);
             canvas1.Children.Add(p);
         }
         public void DrawAxes(string plane = "XY")
         {
             canvasAxes.Children.Clear();
-            axes.BuildAxes();
+            Axes.BuildAxes();
             Matrix3D U, Un;
             U = Matrix3D.Identity;
             Un = Matrix3D.Identity;
 
             Quaternion planeQuat = SetViewPlane(plane);
 
-            U.RotateAt(planeQuat, axes.OriginPoint);
+            U.RotateAt(planeQuat, Axes.OriginPoint);
             Un.RotateAt(planeQuat, new Point3D(0, 0, 0));
 
-            foreach (var item in axes)
+            foreach (var item in Axes)
             {
                 DrawLine(item as LinearMove, false, true);
                 item.Render(U, Un, false, 1);
@@ -215,17 +223,24 @@ namespace PrimaPower
             BindingOperations.SetBinding(ls, ArcSegment.RotationAngleProperty, new Binding { Source = arcMove, Path = new PropertyPath("RotationAngle") });
             BindingOperations.SetBinding(ls, ArcSegment.IsLargeArcProperty, new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") });
             BindingOperations.SetBinding(ls, ArcSegment.IsStrokedProperty, new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") });
-            BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection") });
+            BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection"), Converter = fromCustomSweepDirectionToArcSweepeDirection });
 
             PathGeometry geometry = new PathGeometry();
             geometry.Figures.Add(pf);
             arcMove.GeometryPath = geometry;
+            arcMove.BoundingBox = new BoundingBox(geometry.Bounds.Left, geometry.Bounds.Right, geometry.Bounds.Top, geometry.Bounds.Bottom);
+
+            if (move.SourceLine == 336)
+            {
+                Console.WriteLine("qui");
+            }
+
 
             Path p = new Path
             {
                 StrokeThickness = 1,
                 Tag = move,
-                Stroke = GetLineColor(arcMove.LineColor),
+                Stroke = ColorsHelper.GetLineColor(arcMove.LineColor),
                 Data = geometry
             };
             if (isRapid)
@@ -247,7 +262,10 @@ namespace PrimaPower
         /// </summary>
         private void DrawArc(PathFigure pf, ArcMove arcMove)
         {
+            PathFigure pfTmp = new PathFigure();
             ArcSegment ls = new ArcSegment();
+
+
             pf.Segments.Add(ls);
 
             BindingOperations.SetBinding(ls, ArcSegment.PointProperty, new Binding { Source = arcMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion });
@@ -255,7 +273,14 @@ namespace PrimaPower
             BindingOperations.SetBinding(ls, ArcSegment.RotationAngleProperty, new Binding { Source = arcMove, Path = new PropertyPath("RotationAngle") });
             BindingOperations.SetBinding(ls, ArcSegment.IsLargeArcProperty, new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") });
             BindingOperations.SetBinding(ls, ArcSegment.IsStrokedProperty, new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") });
-            BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection") });
+            BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection"), Converter = fromCustomSweepDirectionToArcSweepeDirection });
+           
+            
+            pfTmp.Segments.Add(ls);
+            PathGeometry geometry = new PathGeometry();
+            geometry.Figures.Add(pfTmp);
+            arcMove.GeometryPath= geometry;
+            arcMove.BoundingBox = new BoundingBox(geometry.Bounds.Left, geometry.Bounds.Right, geometry.Bounds.Top, geometry.Bounds.Bottom);
         }
 
 
@@ -264,11 +289,22 @@ namespace PrimaPower
         /// </summary>
         private void DrawLine(PathFigure pf, LinearMove linearMove)
         {
+            PathFigure pfTmp = new PathFigure();
             LineSegment ls = new LineSegment();
+ 
+
             pf.Segments.Add(ls);
 
             BindingBase destinationBinding = new Binding { Source = linearMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
             BindingOperations.SetBinding(ls, LineSegment.PointProperty, destinationBinding);
+
+
+            pfTmp.Segments.Add(ls);
+            PathGeometry geometry = new PathGeometry();
+            geometry.Figures.Add(pfTmp);
+            linearMove.GeometryPath = geometry;
+            linearMove.BoundingBox = new BoundingBox(geometry.Bounds.Left, geometry.Bounds.Right, geometry.Bounds.Top, geometry.Bounds.Bottom);
+
         }
 
         /// <summary>
@@ -295,10 +331,12 @@ namespace PrimaPower
             Path p = new Path();
 
             linearMove.GeometryPath = geometry;
+            linearMove.BoundingBox = new BoundingBox(geometry.Bounds.Left, geometry.Bounds.Right, geometry.Bounds.Top, geometry.Bounds.Bottom);
+
             p.Data = geometry;
 
             p.StrokeThickness = 1;
-            p.Stroke = GetLineColor(linearMove.LineColor);
+            p.Stroke = ColorsHelper.GetLineColor(linearMove.LineColor);
             if (isAxes)
             {
                 AddPathMouseEvents(p);
@@ -334,10 +372,9 @@ namespace PrimaPower
 
             double xMin, xMax, yMin, yMax;
             ShiftToCenter(ref U, ref Un, ref cor, out xMin, out xMax, out yMin, out yMax);
-            #region Zoom drawing into Canvas
 
             SetZoom(U, Un, cor, xMin, xMax, yMin, yMax);
-            #endregion Zoom drawing into Canvas
+
             DrawAxes(plane);
         }
 
@@ -380,26 +417,29 @@ namespace PrimaPower
 
         private void ShiftToCenter(ref Matrix3D U, ref Matrix3D Un, ref Point3D cor, out double xMin, out double xMax, out double yMin, out double yMax)
         {
-            #region Shift Drawing in the center of the canvas
-
             xMin = double.PositiveInfinity;
             xMax = double.NegativeInfinity;
             yMin = double.PositiveInfinity;
             yMax = double.NegativeInfinity;
             foreach (var item in moves)
             {
-                if (!item.IsBeamOn)
-                {
-                    continue;
-                }
-                var entity = item; //(item as IToolpathEntity);
-                if (double.IsNegativeInfinity(entity.BoundingBox.Item1) || double.IsInfinity(entity.BoundingBox.Item2) || double.IsNegativeInfinity(entity.BoundingBox.Item3) || double.IsInfinity(entity.BoundingBox.Item4))
+                if (!item.IsBeamOn) continue;
+                UpdateBoundingBox(item);
+                var entity = item; 
+                if (double.IsNegativeInfinity(entity.BoundingBox.Left) || double.IsInfinity(entity.BoundingBox.Right) || double.IsNegativeInfinity(entity.BoundingBox.Top) || double.IsInfinity(entity.BoundingBox.Bottom))
                     continue;
 
-                xMin = Math.Min(entity.BoundingBox.Item1, xMin);
-                xMax = Math.Max(entity.BoundingBox.Item2, xMax);
-                yMin = Math.Min(entity.BoundingBox.Item3, yMin);
-                yMax = Math.Max(entity.BoundingBox.Item4, yMax);
+                xMin = Math.Min(entity.BoundingBox.Left, xMin);
+                xMax = Math.Max(entity.BoundingBox.Right, xMax);
+                yMin = Math.Min(entity.BoundingBox.Top, yMin);
+                yMax = Math.Max(entity.BoundingBox.Bottom, yMax);
+
+                if (entity.SourceLine == 336)
+                {
+                    Console.WriteLine("qui");
+                }
+
+
             }
 
             double xMed = (xMax + xMin) / 2;
@@ -426,7 +466,7 @@ namespace PrimaPower
                 item.Render(U, Un, false, 1);
             }
 
-            #endregion Shift Drawing in the center of the canvas
+            
         }
 
         #endregion
@@ -438,7 +478,7 @@ namespace PrimaPower
             var p = ((Path)sender);
             if (p.Tag != null)
             {
-                if (axes.Contains(p.Tag as IBaseEntity))
+                if (Axes.Contains(p.Tag as IBaseEntity))
                 {
                     OnAxisClicked(p);
                 }
@@ -453,7 +493,7 @@ namespace PrimaPower
         private void MouseEnterEntity(object sender, MouseEventArgs e)
         {
             _originalColor = ((Path)sender).Stroke;
-            ((Path)sender).Stroke = Brushes.Orange;
+            ((Path)sender).Stroke = Brushes.Yellow;
             ((Path)sender).StrokeThickness = 5;
         }
 
@@ -465,6 +505,8 @@ namespace PrimaPower
 
         private void canvas1_MouseDown(object sender, MouseButtonEventArgs e)
         {
+            if (!CanvasInteractionEnabled) return;
+
             var canvas = sender as Canvas;
             if (canvas.Name == "canvas1")
                 previousCoordinate = Mouse.GetPosition(canvas1);
@@ -472,8 +514,7 @@ namespace PrimaPower
 
         private void canvas1_MouseMove(object sender, MouseEventArgs e)
         {
-            //lbl.Text = $"X:{Mouse.GetPosition(canvas1).X.ToString("N0")} Y:{Mouse.GetPosition(canvas1).Y.ToString("N0")}";
-
+            if (!CanvasInteractionEnabled) return;
             if (moves == null) return;
 
             if (e.MiddleButton == MouseButtonState.Pressed)
@@ -509,12 +550,11 @@ namespace PrimaPower
 
                     U = Matrix3D.Identity;
                     Un = Matrix3D.Identity;
-                    HistoryAxes.RotateAt(Q, axes.OriginPoint);
-                    U.RotateAt(Q, axes.OriginPoint);
+                    HistoryAxes.RotateAt(Q, Axes.OriginPoint);
+                    U.RotateAt(Q, Axes.OriginPoint);
                     Un.RotateAt(Q, new Point3D(0, 0, 0));
-                    foreach (var item in axes)
+                    foreach (var item in Axes)
                     {
-
                         item.Render(U, Un, true, 1);
                     }
 
@@ -537,7 +577,6 @@ namespace PrimaPower
                 HistoryU.OffsetX += vX;
                 HistoryU.OffsetY += vY;
 
-
                 cor = U.Transform(cor);
 
                 centerRotation.X = cor.Y;
@@ -556,6 +595,8 @@ namespace PrimaPower
 
         private void canvas1_MouseWheel(object sender, MouseWheelEventArgs e)
         {
+            if (!CanvasInteractionEnabled) return;
+
             if (moves == null) return;
             double Z = 1;
 
@@ -590,7 +631,7 @@ namespace PrimaPower
         #endregion
 
         #region Other Interactions
-        public void RapidsOnOff()
+        public void ShowHideRapids()
         {
             foreach (var child in canvas1.Children)
             {
@@ -610,6 +651,33 @@ namespace PrimaPower
 
         #region Utility methods 
 
+        private void UpdateBoundingBox(IBaseEntity move)
+        {
+            if (move is Macro macro)
+            {
+                double xMin = double.PositiveInfinity;
+                double xMax = double.NegativeInfinity;
+                double yMin = double.PositiveInfinity;
+                double yMax = double.NegativeInfinity;
+
+                foreach (var item in macro.Movements)
+                {
+                    UpdateBoundingBox(item);
+                    //left right bottom top 
+                    xMin = Math.Min(item.BoundingBox.Left, xMin);
+                    xMax = Math.Max(item.BoundingBox.Right, xMax);
+                    yMax = Math.Max(item.BoundingBox.Bottom, yMax);
+                    yMin = Math.Min(item.BoundingBox.Top, yMin);
+                }
+                macro.BoundingBox = new BoundingBox(xMin, yMin, xMax, yMax);
+            }
+            else
+            {
+                ToolpathEntity toolpath = move as ToolpathEntity;
+                PathGeometry pg = toolpath.GeometryPath as PathGeometry;
+                move.BoundingBox = new BoundingBox(pg.Bounds.Left, pg.Bounds.Right, pg.Bounds.Top, pg.Bounds.Bottom);
+            }
+        }
         private void ResetHistoryItems()
         {
             HistoryAxes.SetIdentity();
@@ -643,41 +711,13 @@ namespace PrimaPower
             return new Quaternion(new Vector3D(1, 0, 0), 180);
         }
 
-        private SolidColorBrush GetLineColor(ELineType lineColor)
-        {
-            switch (lineColor)
-            {
-                case ELineType.CutLine1:
-                    return Brushes.Green;
 
-                case ELineType.CutLine2:
-                    return Brushes.RoyalBlue;
 
-                case ELineType.CutLine3:
-                    return Brushes.Red;
-
-                case ELineType.CutLine4:
-                    return Brushes.Violet;
-
-                case ELineType.CutLine5:
-                    return Brushes.Aqua;
-
-                case ELineType.Marking:
-                    return Brushes.Yellow;
-
-                case ELineType.Microwelding:
-                case ELineType.Rapid:
-                    return Brushes.Gray;
-
-                default:
-                    return Brushes.White;
-            }
-        }
 
 
         private void AddPathMouseEvents(Path p)
         {
-            if (CanvasEventsEnabled)
+            if (CanvasInteractionEnabled)
             {
                 p.MouseDown += MouseClickEntity;
                 p.MouseEnter += MouseEnterEntity;
@@ -690,9 +730,9 @@ namespace PrimaPower
                 p.MouseLeave -= MouseLeaveEntity;
             }
         }
-        public void SetCanvasEventsEnabled(bool newStatus)
+        public void SetCanvasInteractionEnabled(bool newStatus)
         {
-            CanvasEventsEnabled = newStatus;
+            CanvasInteractionEnabled = newStatus;
         }
 
 
@@ -721,13 +761,61 @@ namespace PrimaPower
             EntityClicked?.Invoke(p);
         }
 
-
         public void TestRot()
         {
-            RotateViewToPlane("XZ");
+            // test entry point 
+        }
+
+
+        #endregion
+
+        #region tracer 
+        private void ProgressOnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
+            Slider slider = sender as Slider;
+
+
+           int  sliderValue = (int)slider.Value;
+
+            Tracer.TraceLine((int)slider.Value);
+            if (sliderValue > ProgramContext.LastSourceLine)
+            {
+                Tracer.EndTrace();
+            }
+        }
+
+        public void RestartTrace(int fromSourceLine)
+        {
+            Tracer.RestartTrace(fromSourceLine);
+            
+        } 
+        public void UpdateProgressBar(int value)
+        {
+            progressBar.Value= value;
         }
 
         #endregion
+        #region snapshot
+        public void TakeSnapshot(string programPath, string imagePath)
+        {
+            //if size is not provided, uses the default main canvas
+            Size size = new Size(canvas1.ActualWidth, canvas1.ActualHeight);
+            TakeSnapshot(programPath, imagePath, size);
+        }
+        public void TakeSnapshot(string programPath, string imagePath, Size size)
+        {
+            canvas1.Measure(size);
+            canvas1.Arrange(new Rect(size));
+            DrawProgram(programPath);
+            Snapshotter.SaveCanvasSnapshot(canvas1, imagePath, size);
+            SnapshotTaken?.Invoke(imagePath);
+        }
+
+
+
+        #endregion
+
 
         public void RotateViewToPlane(string plane)
         {       
@@ -754,12 +842,12 @@ namespace PrimaPower
                 {
                     item.Render(HistoryU, HistoryUn, true, HistoryZRadius);
                 }
-                foreach (var item in axes)
+                foreach (var item in Axes)
                 {
                     item.Render(HistoryAxes, HistoryUn, true, 1);
                 }
-                //ShiftToCenter(ref U, ref Un, ref cor, out xMin, out xMax, out yMin, out yMax);
-                //SetZoom(U, Un, cor, xMin, xMax, yMin, yMax);
+                ShiftToCenter(ref U, ref Un, ref cor, out xMin, out xMax, out yMin, out yMax);
+                SetZoom(U, Un, cor, xMin, xMax, yMin, yMax);
                 ResetHistoryItems();
 
                 //If plane is different than XY , rotate again to match the desired plane  
@@ -770,24 +858,28 @@ namespace PrimaPower
                     Quaternion planeQuat = SetViewPlane(plane);
                     HistoryU.RotateAt(planeQuat, centerRotation);
                     HistoryUn.RotateAt(planeQuat, new Point3D(0, 0, 0));
-                    HistoryAxes.RotateAt(planeQuat, axes.OriginPoint);
+                    HistoryAxes.RotateAt(planeQuat, Axes.OriginPoint);
                     foreach (var item in moves)
                     {
                         item.Render(HistoryU, HistoryUn, true, HistoryZRadius);
                     }
-                    foreach (var item in axes)
+                    foreach (var item in Axes)
                     {
                         item.Render(HistoryAxes, HistoryUn, true, 1);
                     }
 
                     ShiftToCenter(ref U, ref Un, ref cor, out xMin, out xMax, out yMin, out yMax);
-                    //SetZoom(U, Un, cor, xMin, xMax, yMin, yMax);
+
                 }
 
 
             }
 
         }
+
+
+
+
 
     }
 
