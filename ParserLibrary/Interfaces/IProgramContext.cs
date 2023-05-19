@@ -30,7 +30,7 @@ namespace ParserLibrary.Interfaces
         ELineType ContourLineType { get; set; }
 
         IList<IBaseEntity> Moves { get; set; }
-
+        Dictionary<string,string> VariablesDict { get; set; }
         void UpdateProgramCenterPoint();
 
     }

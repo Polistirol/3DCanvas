@@ -2,8 +2,10 @@
 {
     public interface IParser
     {
-        string Filename { get; set; }
+        string PartProgramFilePath { get; set; }
 
         IProgramContext GetProgramContext();
+
+        void ReadFile(string partProgramFilePath);
     }
 }

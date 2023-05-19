@@ -18,7 +18,7 @@ namespace ParserLibrary.Services.Parsers
 {
     public class ParseMpf : IParser
     {
-        public string Filename { get; set; }
+        public string PartProgramFilePath { get; set; }
         private Regex GcodeAxesQuotaRegex;
         private Regex VariableDeclarationRegex;
         private Regex MacroParsRegex;
@@ -31,7 +31,7 @@ namespace ParserLibrary.Services.Parsers
         public ParseMpf(string fileName)
         {
 
-            Filename = fileName;
+            PartProgramFilePath = fileName;
             string GcodeAxesQuotaPattern = @"\b[A-Za-z]+[\=]?[A-Za-z]*[+-]?\d*\.?\d*([+-]?[*:]?[A-Za-z]*[+-]?\d*\.?\d*)+\b";
             GcodeAxesQuotaRegex = new Regex(GcodeAxesQuotaPattern, RegexOptions.IgnoreCase);
             string VariableDeclarationPattern = @"\b[A-Za-z]+[\d]+([\=]?[A-Za-z]*[+-]?[*:]?\d*\.?\d*)+\b";
@@ -77,7 +77,7 @@ namespace ParserLibrary.Services.Parsers
         {
             try
             {
-                var dic_LineNumber_Line = ReadProgramFile(Filename);
+                var dic_LineNumber_Line = ReadProgramFile(PartProgramFilePath);
                 _dicSubprograms = new Dictionary<string, List<Tuple<int, string>>>();
 
                 Dictionary<int, string> dic = new Dictionary<int, string>();
@@ -830,6 +830,11 @@ namespace ParserLibrary.Services.Parsers
 
 
             return double.Parse(axValue);
+        }
+
+        public void ReadFile(string filePath)
+        {
+            throw new NotImplementedException();
         }
     }
 

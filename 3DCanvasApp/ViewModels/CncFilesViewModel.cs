@@ -23,7 +23,9 @@ namespace Canvas3DViewer.ViewModels
             ExtFiles = new ObservableCollection<string>
             {
                 "*.mpf",
-                "*.iso"
+                "*.iso",
+                "*.xml",
+
             };
             SelectedExtensionFile = Properties.Settings.Default.ExtensionFile;
 
@@ -72,6 +74,8 @@ namespace Canvas3DViewer.ViewModels
                 _extFile = value;
 
                 OnPropertyChanged();
+                LoadProgramsList();
+
             }
         }
 

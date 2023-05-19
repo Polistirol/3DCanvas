@@ -48,6 +48,8 @@ namespace ParserLibrary.Models
         public IList<IBaseEntity> Moves { get; set; } = new List<IBaseEntity>();
         public IRotoTranslation RotoTranslation { get; set; }
         public int TextLineCount { get; set; }
+        public Dictionary<string, string> VariablesDict { get; set; }
+        
 
         public void UpdateProgramCenterPoint()
         {

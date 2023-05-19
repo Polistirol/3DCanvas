@@ -50,7 +50,6 @@ namespace ParserLibrary.Helpers
         public static Point3D GetRotoTranslatedPoint(ProgramContext programContext, double X, double Y, double Z)
         {
             return GetRotoTranslatedPoint(programContext, new Point3D(X, Y, Z));
-
         }
 
         public static Point3D GetRotoTranslatedPoint(ProgramContext programContext, Point3D point)
@@ -58,11 +57,8 @@ namespace ParserLibrary.Helpers
             Point3D initialPoint = point;
             Point3D rotated = RotatePoint(programContext,initialPoint) ;
             Point3D translated = TranslatePoint(rotated, programContext);
-            
             return translated;
         }
-
-         
 
     }
 }

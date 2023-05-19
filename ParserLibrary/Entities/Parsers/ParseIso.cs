@@ -13,12 +13,13 @@ using System.Threading.Tasks;
 using ParserLibrary.Models.Media;
 using static ParserLibrary.Helpers.GeoHelper;
 using static ParserLibrary.Helpers.TechnoHelper;
+using ParserLibrary.Entities.Parsers;
 
 namespace ParserLibrary.Services.Parsers
 {
     public class ParseIso : IParser
     {
-        public string Filename { get; set; }
+        public string PartProgramFilePath { get; set; }
         private Regex SubCallRegex;
         private Regex GcodeAxesQuotaRegex;
         private Regex VariableDeclarationRegex;
@@ -38,11 +39,22 @@ namespace ParserLibrary.Services.Parsers
 
         public ParseIso(string fileName)
         {
-            Filename = fileName;
+            PartProgramFilePath = fileName;
             SubCallRegex = new Regex(subCallPattern, RegexOptions.IgnoreCase);
             GcodeAxesQuotaRegex = new Regex(GcodeAxesQuotaPattern, RegexOptions.IgnoreCase);
             VariableDeclarationRegex = new Regex(VariableDeclarationPattern, RegexOptions.IgnoreCase);
             MacroParsRegex = new Regex(macroParsPattern, RegexOptions.IgnoreCase);
+            testxml();
+        }
+
+        public void testxml()
+        {
+            
+            //ParseXML pxml = new ParseXML();
+            //pxml.PartProgramFilePath = "D:\\_DEV\\VS_DEV\\zz_RES\\ISO\\ATR_77_001_Fiera_NP.xml";
+            //pxml.ReadFile();
+            //pxml.ProgramContext.Moves = pxml.GetMoves();
+
         }
 
         public IProgramContext GetProgramContext()
@@ -138,7 +150,7 @@ namespace ParserLibrary.Services.Parsers
             finally
             {
                 startT.Stop();
-                Console.WriteLine($"{Filename} ReadAndFilterLinesFromFile reading of the file: {startT.Elapsed}");
+                Console.WriteLine($"{PartProgramFilePath} ReadAndFilterLinesFromFile reading of the file: {startT.Elapsed}");
             }
 
             return dic;
@@ -206,7 +218,7 @@ namespace ParserLibrary.Services.Parsers
             Dictionary<int, string> lines = new Dictionary<int, string>();
             Stopwatch dt = Stopwatch.StartNew();
             // Usa uno stream reader per leggere il file linea per linea
-            using (StreamReader reader = new StreamReader(Filename))
+            using (StreamReader reader = new StreamReader(PartProgramFilePath))
             {
                 // Inizializza un contatore per numerare le linee
                 int lineNumber = 1;
@@ -238,7 +250,7 @@ namespace ParserLibrary.Services.Parsers
             }
 
             dt.Stop();
-            Console.WriteLine($"{Filename} First reading of the file: {dt.ElapsedMilliseconds} ms");
+            Console.WriteLine($"{PartProgramFilePath} First reading of the file: {dt.ElapsedMilliseconds} ms");
             // Restituisce il dizionario contenente le linee del file
             return lines;
         }
@@ -288,7 +300,7 @@ namespace ParserLibrary.Services.Parsers
             finally
             {
                 dt.Stop();
-                Console.WriteLine($"{Filename} GetMoves: {dt.ElapsedMilliseconds} ms");
+                Console.WriteLine($"{PartProgramFilePath} GetMoves: {dt.ElapsedMilliseconds} ms");
             }
 
             return moves;
@@ -1366,7 +1378,7 @@ namespace ParserLibrary.Services.Parsers
             {
                 dt.Stop();
 
-                Console.WriteLine($"{Filename} ReadAndFilterLinesFromFile reading of the file: {dt.ElapsedMilliseconds} ms");
+                Console.WriteLine($"{PartProgramFilePath} ReadAndFilterLinesFromFile reading of the file: {dt.ElapsedMilliseconds} ms");
             }
 
             return null;
@@ -1380,7 +1392,7 @@ namespace ParserLibrary.Services.Parsers
             Stopwatch dt = Stopwatch.StartNew();
             int counterSkippedAtTheBeginning = 0;
             const Int32 BufferSize = 1024;
-            using (var fileStream = File.OpenRead(Filename))
+            using (var fileStream = File.OpenRead(PartProgramFilePath))
             using (var streamReader = new StreamReader(fileStream, System.Text.Encoding.UTF8, true, BufferSize))
             {
                 string line;
@@ -1435,8 +1447,13 @@ namespace ParserLibrary.Services.Parsers
             }
             dt.Stop();
 
-            Console.WriteLine($"{Filename} First reading of the file: {dt.ElapsedMilliseconds} ms");
+            Console.WriteLine($"{PartProgramFilePath} First reading of the file: {dt.ElapsedMilliseconds} ms");
             return dic;
+        }
+
+        public void ReadFile(string filePath)
+        {
+            throw new NotImplementedException();
         }
     }
 }

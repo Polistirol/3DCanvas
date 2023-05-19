@@ -73,11 +73,6 @@ namespace ParserLibrary.Models
 
         }
 
-
-    
-
-
-
     public void UpdateTranslation(Vector3D newTranslation, bool isGlobal = true)
         {
             if (isGlobal) //G93
@@ -90,11 +85,8 @@ namespace ParserLibrary.Models
                     LocalTranslationComponents = Vector3D.Add(  LocalTranslationComponents , newTranslation);
                     var point = new Point3D(0,0,1);
                     point = RotatePoint(point);
-
             }
-            ActiveTranslationComponents = Vector3D.Add(LocalTranslationComponents,GlobalTranslationComponents);
-
-            
+            ActiveTranslationComponents = Vector3D.Add(LocalTranslationComponents,GlobalTranslationComponents);        
         }
 
         public void ResetLocalRotoTranslation()
@@ -123,13 +115,11 @@ namespace ParserLibrary.Models
                 {
                     LocalRotationComponents = Vector3D.Add(LocalRotationComponents, newRotation);
                     LocalTranslationComponents = Vector3D.Add(LocalTranslationComponents, newTranslation);
-                     LocalTranslationComponents = RotateVector_Euler(LocalTranslationComponents, ActiveRotationComponents);
-                   
-                        }
+                    LocalTranslationComponents = RotateVector_Euler(LocalTranslationComponents, ActiveRotationComponents);
+                }
             }
             ActiveTranslationComponents = Vector3D.Add(LocalTranslationComponents, GlobalTranslationComponents);
             ActiveRotationComponents = Vector3D.Add(LocalRotationComponents, GlobalRotationComponents);
-
         }
     }
 }

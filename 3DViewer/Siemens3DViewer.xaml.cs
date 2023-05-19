@@ -1,4 +1,5 @@
 ﻿using ParserLib;
+using ParserLibrary.Entities.Parsers;
 using ParserLibrary.Interfaces;
 using ParserLibrary.Interfaces.Macros;
 using ParserLibrary.Models;
@@ -55,8 +56,6 @@ namespace PrimaPower
         public Action<Path> AxisClicked;
         public Action KeyPressed;
         public Action<string> SnapshotTaken;
-        
-        
 
         #endregion
 
@@ -73,35 +72,31 @@ namespace PrimaPower
 
         public void DrawProgram(string fullName)
         {
-            Stopwatch ost = new Stopwatch();
-            ost.Start();
+            Stopwatch ost = Stopwatch.StartNew();
             ResetHistoryItems();
 ;           Filename = fullName;
             try
             {
-                //ost.Start();
                 Parser parser = null;
                 var extension = System.IO.Path.GetExtension(fullName).ToLower().Trim();
                 if (extension == ".iso")
                     parser = new Parser(new ParseIso(fullName));
                 else if (extension == ".mpf")
-                    parser = new Parser(new ParseMpf(fullName));
+                    parser = new Parser(new ParseMpf(fullName));                
+                else if (extension == ".xml")
+                    parser = new Parser(new ParseXML(fullName));
                 else
                     MessageBox.Show("File extension invalid");
-
 
                 ProgramContext = parser.GetProgramContext() ;
                 moves = (List<IBaseEntity>)ProgramContext.Moves;
                 Tracer.SetProgramContext(ProgramContext);
 
-                //ost.Stop();
-                //Console.WriteLine($"Time to obtain moves of: {System.IO.Path.GetFileName(fullName)} is {ost.ElapsedMilliseconds}ms");
-                     
-                Stopwatch st = Stopwatch.StartNew();
-
                 if (moves == null) return;
 
                 centerRotation = ProgramContext.CenterRotationPoint;
+
+                Path[] paths = new Path[moves.Count*2];
 
                 foreach (var item in moves)
                 {
@@ -130,7 +125,7 @@ namespace PrimaPower
                             DrawArc(item as ArcMove);
                     }
                 }
-                st.Stop();
+                
                 InitialTransform();
 
                 Tracer.SetPathsCollection(canvas1.Children);
@@ -138,16 +133,14 @@ namespace PrimaPower
                 progressBar.Maximum = 1+ ProgramContext.Moves.LastOrDefault().SourceLine;
                 progressBar.Minimum = ProgramContext.Moves.FirstOrDefault().SourceLine;
                 progressBar.Value = progressBar.Minimum;
-                
-                Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {st.ElapsedMilliseconds} ms");
+
+                Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {ost.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
         }
-
-
 
 
         #region Drawers
@@ -203,7 +196,6 @@ namespace PrimaPower
                 DrawLine(item as LinearMove, false, true);
                 item.Render(U, Un, false, 1);
             }
-
         }
 
         /// <summary>
@@ -234,7 +226,6 @@ namespace PrimaPower
             {
                 Console.WriteLine("qui");
             }
-
 
             Path p = new Path
             {
@@ -292,19 +283,16 @@ namespace PrimaPower
             PathFigure pfTmp = new PathFigure();
             LineSegment ls = new LineSegment();
  
-
             pf.Segments.Add(ls);
 
             BindingBase destinationBinding = new Binding { Source = linearMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
             BindingOperations.SetBinding(ls, LineSegment.PointProperty, destinationBinding);
-
 
             pfTmp.Segments.Add(ls);
             PathGeometry geometry = new PathGeometry();
             geometry.Figures.Add(pfTmp);
             linearMove.GeometryPath = geometry;
             linearMove.BoundingBox = new BoundingBox(geometry.Bounds.Left, geometry.Bounds.Right, geometry.Bounds.Top, geometry.Bounds.Bottom);
-
         }
 
         /// <summary>
@@ -393,7 +381,6 @@ namespace PrimaPower
             {
                 item.Render(U, Un, false, 1);
             }
-
             #endregion Top View of the drawing
         }
 
@@ -438,8 +425,6 @@ namespace PrimaPower
                 {
                     Console.WriteLine("qui");
                 }
-
-
             }
 
             double xMed = (xMax + xMin) / 2;
@@ -464,9 +449,7 @@ namespace PrimaPower
             foreach (var item in moves)
             {
                 item.Render(U, Un, false, 1);
-            }
-
-            
+            }           
         }
 
         #endregion
@@ -486,7 +469,6 @@ namespace PrimaPower
                 {
                     OnEntityClicked(p);
                 }
-
             }
         }
 
@@ -710,9 +692,6 @@ namespace PrimaPower
 
             return new Quaternion(new Vector3D(1, 0, 0), 180);
         }
-
-
-
 
 
         private void AddPathMouseEvents(Path p)
