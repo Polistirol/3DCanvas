@@ -55,10 +55,10 @@ namespace ParserLibrary.Helpers
         }
 
         ///<summary> Returns the closest point to the givenPoint from a list of points </summary> 
-        public static (Point3D point,int index) GetClosestPointID(Point3D givenPoint, Point3D[] points)
+        public static Point3D  GetClosestPointID(Point3D givenPoint, Point3D[] points , out int index)
         {
             Point3D closestPoint = points[0];
-            int index = 0;
+            index = 0;
             for (int i = 0; i < points.Length; i++)
             {
                 if (Point3D.Subtract(givenPoint, points[i]).Length < Point3D.Subtract(givenPoint, closestPoint).Length)
@@ -67,7 +67,7 @@ namespace ParserLibrary.Helpers
                     index = i;
                 }
             }
-            return (point:closestPoint,index:index);
+            return closestPoint;
 
         }
 

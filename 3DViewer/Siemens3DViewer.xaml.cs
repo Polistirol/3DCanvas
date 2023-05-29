@@ -18,6 +18,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Xml.Linq;
 using static ParserLibrary.Helpers.TechnoHelper;
 
 namespace PrimaPower
@@ -25,26 +26,29 @@ namespace PrimaPower
     /// <summary>
     /// Logica di interazione per UserControl1.xaml
     /// </summary>
-    public partial class Siemens3DViewer : UserControl
+    public partial class Siemens3DViewer : UserControl 
     {
 
         private List<IBaseEntity> moves;
         public string Filename { get; set; }
-        private bool CanvasInteractionEnabled { get; set; }
+        public bool CanvasInteractionEnabled { get; set; }
         
         private Axes Axes = new Axes();
         public IProgramContext ProgramContext { get; set; }
 
         private Point previousCoordinate;
         private Point3D centerRotation = new Point3D(150, 150, 0);
-
         private From3DTo2DPointConversion from3Dto2DPointConversion = null;
         private FromCustomSweepDirectionToArcSweepDirection fromCustomSweepDirectionToArcSweepeDirection = null;
         private Brush _originalColor = null;
 
+     
+
         private Tracer Tracer;
         private Snapshotter Snapshotter;
         
+        public IBaseEntity SelectedEntity { get; set; }
+        public int SelectedEntityLine => SelectedEntity != null ? SelectedEntity.SourceLine : 0;
 
         Matrix3D HistoryU = Matrix3D.Identity;
         Matrix3D HistoryUn = Matrix3D.Identity;
@@ -52,7 +56,7 @@ namespace PrimaPower
         double HistoryZRadius = 1;
 
         #region Actions
-        public Action<Path> EntityClicked;
+        public Action<Path,int> EntityClicked;
         public Action<Path> AxisClicked;
         public Action KeyPressed;
         public Action<string> SnapshotTaken;
@@ -65,30 +69,90 @@ namespace PrimaPower
             System.Threading.Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en-EN");
             from3Dto2DPointConversion = new From3DTo2DPointConversion();
             fromCustomSweepDirectionToArcSweepeDirection = new FromCustomSweepDirectionToArcSweepDirection();
+            SetCanvasInteractionEnabled(true);
             Tracer = new Tracer();
             Snapshotter = new Snapshotter();
             Axes.BuildAxes();   
         }
 
-        public void DrawProgram(string fullName)
+        public string ProgramPath
         {
-            Stopwatch ost = Stopwatch.StartNew();
-            ResetHistoryItems();
-;           Filename = fullName;
+            get { return (string)GetValue(ProgramPathProperty); }
+            set {SetValue(ProgramPathProperty, value); }
+        }
+
+        public XElement LoadedXElement
+        {
+            get { return (XElement)GetValue(LoadedXElementProperty); }
+            set { SetValue(LoadedXElementProperty, value); }
+        }
+
+        // Using a DependencyProperty as the backing store for ProgramPath.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty ProgramPathProperty =
+            DependencyProperty.RegisterAttached(nameof(ProgramPath), typeof(string), typeof(Siemens3DViewer),
+                new UIPropertyMetadata(string.Empty, OnProgramPathPropertyChanged));
+
+        public static readonly DependencyProperty LoadedXElementProperty =
+            DependencyProperty.RegisterAttached(nameof(LoadedXElement), typeof(XElement), typeof(Siemens3DViewer),
+                new UIPropertyMetadata(null, OnLoadedXElementPropertyChanged));
+
+        private static void OnProgramPathPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        {
+            (sender as Siemens3DViewer).PreviewFromPath((string)e.NewValue);
+        }
+
+        private static void OnLoadedXElementPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        {
+            XElement loaded;
             try
             {
-                Parser parser = null;
-                var extension = System.IO.Path.GetExtension(fullName).ToLower().Trim();
-                if (extension == ".iso")
-                    parser = new Parser(new ParseIso(fullName));
-                else if (extension == ".mpf")
-                    parser = new Parser(new ParseMpf(fullName));                
-                else if (extension == ".xml")
-                    parser = new Parser(new ParseXML(fullName));
-                else
-                    MessageBox.Show("File extension invalid");
+                 loaded = (e.NewValue as XElement).Element("Program").Element("Main");
+            }
+            catch {
+                
+            }
+            finally
+            {
+                loaded = (XElement)e.NewValue;
+                (sender as Siemens3DViewer).PreviewFromXElement(loaded, "test" );
+            }
 
-                ProgramContext = parser.GetProgramContext() ;
+
+            
+        }
+
+        public void PreviewFromPath(string fullName)
+        {
+            Parser parser = null;
+            var extension = System.IO.Path.GetExtension(fullName).ToLower().Trim();
+            if (extension == ".iso")
+                parser = new Parser(new ParseIso(fullName));
+            else if (extension == ".mpf")
+                parser = new Parser(new ParseMpf(fullName));
+            else if (extension == ".xml")
+                parser = new Parser(new ParseXML(fullName));
+            else
+                MessageBox.Show("File extension invalid");
+
+            ProgramContext = parser.GetProgramContext();
+            DrawProgram(fullName);
+        }
+
+        public void PreviewFromXElement(XElement program, string fullName)
+        {
+            Parser parser = new Parser(new ParseXML(program));
+            ProgramContext = parser.GetProgramContext();
+            DrawProgram(fullName);
+        }
+
+        public void DrawProgram(string fullName)
+        {
+            ClearCanvas();
+            Stopwatch ost = Stopwatch.StartNew();
+            ResetHistoryItems();
+            Filename = fullName;
+            try
+            {
                 moves = (List<IBaseEntity>)ProgramContext.Moves;
                 Tracer.SetProgramContext(ProgramContext);
 
@@ -129,10 +193,6 @@ namespace PrimaPower
                 InitialTransform();
 
                 Tracer.SetPathsCollection(canvas1.Children);
-
-                progressBar.Maximum = 1+ ProgramContext.Moves.LastOrDefault().SourceLine;
-                progressBar.Minimum = ProgramContext.Moves.FirstOrDefault().SourceLine;
-                progressBar.Value = progressBar.Minimum;
 
                 Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {ost.ElapsedMilliseconds} ms");
             }
@@ -222,10 +282,6 @@ namespace PrimaPower
             arcMove.GeometryPath = geometry;
             arcMove.BoundingBox = new BoundingBox(geometry.Bounds.Left, geometry.Bounds.Right, geometry.Bounds.Top, geometry.Bounds.Bottom);
 
-            if (move.SourceLine == 336)
-            {
-                Console.WriteLine("qui");
-            }
 
             Path p = new Path
             {
@@ -421,10 +477,6 @@ namespace PrimaPower
                 yMin = Math.Min(entity.BoundingBox.Top, yMin);
                 yMax = Math.Max(entity.BoundingBox.Bottom, yMax);
 
-                if (entity.SourceLine == 336)
-                {
-                    Console.WriteLine("qui");
-                }
             }
 
             double xMed = (xMax + xMin) / 2;
@@ -469,6 +521,15 @@ namespace PrimaPower
                 {
                     OnEntityClicked(p);
                 }
+            }
+        }
+
+        private void SelectElementFromLineNumber(int lineNumber)
+        {   
+            Path path = canvas1.Children.OfType<Path>().FirstOrDefault(x=> x.Tag != null &&  (x.Tag as IBaseEntity).SourceLine == lineNumber);
+            if (path != null)
+            {
+                OnEntityClicked(path);
             }
         }
 
@@ -709,13 +770,13 @@ namespace PrimaPower
                 p.MouseLeave -= MouseLeaveEntity;
             }
         }
-        public void SetCanvasInteractionEnabled(bool newStatus)
+        private void SetCanvasInteractionEnabled(bool newStatus)
         {
             CanvasInteractionEnabled = newStatus;
         }
 
 
-        public bool isValidPlaneString(string plane)
+        private bool isValidPlaneString(string plane)
         {
             return (plane == "XY" || plane == "XZ" || plane == "YZ") ? true : false;
         }
@@ -724,7 +785,7 @@ namespace PrimaPower
 
 
         #region Actions Default Logic 
-        public void OnAxisClicked(Path p = null)
+        private void OnAxisClicked(Path p = null)
         {
             IBaseEntity axe = p.Tag as IBaseEntity;
             string axePlane = axe.Tag.ToString();
@@ -737,7 +798,8 @@ namespace PrimaPower
         private void OnEntityClicked(Path p)
         {
             Console.WriteLine($"Entity clicked {p.Tag.ToString()}");
-            EntityClicked?.Invoke(p);
+            SelectedEntity = p.Tag as IBaseEntity;
+            EntityClicked?.Invoke(p,SelectedEntityLine);
         }
 
         public void TestRot()
@@ -769,10 +831,7 @@ namespace PrimaPower
             Tracer.RestartTrace(fromSourceLine);
             
         } 
-        public void UpdateProgressBar(int value)
-        {
-            progressBar.Value= value;
-        }
+
 
         #endregion
         #region snapshot

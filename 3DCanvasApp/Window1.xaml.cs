@@ -13,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Shapes;
+using System.Xml.Linq;
 
 namespace Canvas3DViewer
 {
@@ -25,18 +26,21 @@ namespace Canvas3DViewer
 
         private From3DTo2DPointConversion from3Dto2DPointConversion = null;
 
+        public int ClickedLine { get; set; }    
+
         public Window1()
         {
             InitializeComponent();
             System.Threading.Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en-EN");
             this.DataContext = new CncFilesViewModel();
             from3Dto2DPointConversion = new From3DTo2DPointConversion();
+            ClickedLine = 0;    
 
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            Viewer3D.SetCanvasInteractionEnabled(true);
+            //Viewer3D.SetCanvasInteractionEnabled(true);
             Viewer3D.EntityClicked += OnEntityClicked;
             Viewer3D.AxisClicked += OnAxisClicked;
 
@@ -50,9 +54,10 @@ namespace Canvas3DViewer
         {
             
         }
-        private void OnEntityClicked(Path p)
+        private void OnEntityClicked(Path p,int line)
         {
             PopolateTextBox(p);
+            lineClickedBox.Text = line.ToString();
         }
 
 
@@ -94,8 +99,11 @@ namespace Canvas3DViewer
             if (e.AddedItems.Count == 0) return;
             var fi = e.AddedItems[0] as CncFile;
             Filename = fi.FullPath;
-            Viewer3D.DrawProgram(Filename);
-            
+
+            //Viewer3D.PreviewFromPath(Filename);
+
+            XElement preload = XElement.Load(Filename, LoadOptions.SetLineInfo);
+            Viewer3D.PreviewFromXElement(preload,Filename);
         }
 
         private void txtLine_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -176,9 +184,11 @@ namespace Canvas3DViewer
             if (int.TryParse(value, out line))
             {
                 Viewer3D.RestartTrace(line);
-                Viewer3D.UpdateProgressBar( line);
+                //Viewer3D.UpdateProgressBar( line);
             }
         }
+
+        
 
         private void listView_MouseDown(object sender, MouseButtonEventArgs e)
         {

@@ -360,7 +360,7 @@ namespace ParserLibrary.Helpers
             //lead in
 
             int index;
-            (poly.LeadIn.EndPoint, index) = MathHelpers.GetClosestPointID(poly.LeadIn.StartPoint, vertices);
+            poly.LeadIn.EndPoint = MathHelpers.GetClosestPointID(poly.LeadIn.StartPoint, vertices, out index);
             poly.LeadIn.Tag = poly;
             vertices[poly.Sides] = poly.VertexPoint;
             while (poly.Movements.Count <= poly.Sides)
@@ -415,8 +415,7 @@ namespace ParserLibrary.Helpers
             Point3D[] movesTarget = new Point3D[7] { vA, vB, vC, vD, vA, vB, vC };
             rect.LeadIn.EndPoint = MathHelpers.GetClosestPoint(rect.LeadIn.StartPoint, new Point3D[] { mAB, mBC, mCD, mDA });
             int index = 0;
-            Point3D _unused;
-            (_unused, index) = MathHelpers.GetClosestPointID(rect.LeadIn.EndPoint, new Point3D[] { vA, vB, vC, vD }); ;
+            MathHelpers.GetClosestPointID(rect.LeadIn.EndPoint, new Point3D[] { vA, vB, vC, vD }, out index); 
 
             rect.Movements.Add(
                 new LinearMove()

@@ -19,15 +19,6 @@
         </Grid.RowDefinitions>
         <Canvas x:Name="canvas1" ClipToBounds="True"  Background="#2d2d2d" MouseDown="canvas1_MouseDown" MouseMove="canvas1_MouseMove" MouseWheel="canvas1_MouseWheel" Grid.RowSpan="3" Grid.ColumnSpan="3" />
         <Canvas x:Name="canvasAxes" Grid.Row="2" Grid.Column="2"   />
-        <Slider x:Name="progressBar" Canvas.Left="195"  Grid.Column="1" Grid.Row="2" Minimum="0" Maximum="{Binding MoveCount}" IsSnapToTickEnabled="True"  ValueChanged="ProgressOnValueChanged" SmallChange="1" />
-
-
-        <!--<StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="10,0,0,0">
-            <Button x:Name="btnPlaneXY" Width="16" Margin="4" Content="XY" Click="Button_Click" Tag="XY"/>
-            <Button x:Name="btnPlaneXZ" Width="16" Margin="4" Content="ZY" Click="Button_Click" Tag="XZ"/>
-            <Button x:Name="btnPlaneYZ" Width="16" Margin="4" Content="ZX" Click="Button_Click" Tag="YZ"/>
-
-        </StackPanel>-->
 
     </Grid>
 </UserControl>

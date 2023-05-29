@@ -17,7 +17,7 @@ namespace ParserLibrary.Entities.Parsers
 
         private IEnumerable<XElement> _xCommDefInstructions;
 
-        private const string CommDefFilePath = "D:\\_DEV\\VS_DEV\\zz_RES\\VisualCommDef.xml";
+        private const string CommDefFilePath = "C:\\FPSuite\\SharedFiles\\CommDefs\\VisualCommDef.xml";
 
 
         private bool _hasEnded = false;
@@ -29,8 +29,12 @@ namespace ParserLibrary.Entities.Parsers
             PartProgramFilePath = partProgramFilePath;
             ReadFile();
             BeginParsing();
-        }   
-
+        }
+        public ParseXML(XElement preloadedProgram) : base()
+        {
+            _xInstructions = preloadedProgram.Elements();
+            BeginParsing();
+        }
         public IProgramContext GetProgramContext()
         {
             return ProgramContext;
@@ -77,7 +81,8 @@ namespace ParserLibrary.Entities.Parsers
             {
                 //getting instruction type and mode
                 string instructionName = element.Name.LocalName.ToUpper();
-                (EInstructionType instructionType, EInstructionMode? instructionMode) = GetInstructionTypeAndMode(instructionName);
+                EInstructionMode? instructionMode;
+                EInstructionType instructionType = GetInstructionTypeAndMode(instructionName, out instructionMode   );
 
                 switch (instructionType)
                 {
@@ -233,14 +238,15 @@ namespace ParserLibrary.Entities.Parsers
         private bool isMode(XElement element, EInstructionMode targetMode)
         {
             string name = element.Name.LocalName;
-            (EInstructionType instructionType, EInstructionMode? instructionMode) = GetInstructionTypeAndMode(name);
+            EInstructionMode? instructionMode;
+            EInstructionType instructionType = GetInstructionTypeAndMode(name, out instructionMode);
             if (instructionMode == targetMode)
                 return true;
             else 
                 return false;
         }
 
-        private (EInstructionType, EInstructionMode?) GetInstructionTypeAndMode(string name )
+        private EInstructionType GetInstructionTypeAndMode(string name , out EInstructionMode? InstrMode )
         {
             XElement el = _xCommDefInstructions.FirstOrDefault(x => x.Name.LocalName == name);
             if (el != null)
@@ -257,15 +263,21 @@ namespace ParserLibrary.Entities.Parsers
                 {
                     if ( Enum.TryParse<EInstructionType>(type.Value.ToString(), out EInstructionType instructionType) &&
                         Enum.TryParse<EInstructionMode>(mode.Value.ToString(), out EInstructionMode instructionMode) ) {
-                        return (instructionType, instructionMode);
+                        InstrMode = instructionMode;
+                        return (instructionType);
                     }
                     else
                         throw new InvalidOperationException("Command to Preview has not type or Mode !");
                 }
 
             }
-            else 
-                return (EInstructionType.Skippable, null ) ;
+            else
+            {
+                InstrMode = null;
+                return EInstructionType.Skippable  ;
+            }
+                
+            
         }
 
 

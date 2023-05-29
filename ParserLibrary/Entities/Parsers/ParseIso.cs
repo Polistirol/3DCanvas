@@ -446,20 +446,19 @@ namespace ParserLibrary.Services.Parsers
                         break;
                     case 93:
                         //sets new rototraslation, overreides previous one, if empty resets all rototraslations
-                        (Vector3D translationComponents, Vector3D rotationComponents) = ParseRotoTranslComponents(m);
-                        //programContext.RotoTranslation.UpdateTranslation(translationComponents);
-                        //programContext.RotoTranslation.UpdateRotation(rotationComponents);
-                        programContext.RotoTranslation.UpdateRotoTraslComponents(rotationComponents,translationComponents);
+                        
+                        //(Vector3D translationComponents, Vector3D rotationComponents) = ParseRotoTranslComponents(m);
+
+                        //programContext.RotoTranslation.UpdateRotoTraslComponents(rotationComponents,translationComponents);
                         
                         break;
 
                     case 94:
                         //set additive rototraslation, if empy resets only additive rototraslations
-                        (Vector3D _translationComponents, Vector3D _rotationComponents) = ParseRotoTranslComponents(m);
+                        //(Vector3D _translationComponents, Vector3D _rotationComponents) = ParseRotoTranslComponents(m);
                         
-                        //programContext.RotoTranslation.UpdateTranslation(_translationComponents,false);
-                        //programContext.RotoTranslation.UpdateRotation(_rotationComponents, false);
-                        programContext.RotoTranslation.UpdateRotoTraslComponents(_rotationComponents, _translationComponents,false);
+
+                        //programContext.RotoTranslation.UpdateRotoTraslComponents(_rotationComponents, _translationComponents,false);
                         break;
                     case 113:
 
