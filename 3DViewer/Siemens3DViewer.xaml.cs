@@ -103,21 +103,8 @@ namespace PrimaPower
 
         private static void OnLoadedXElementPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
         {
-            XElement loaded;
-            try
-            {
-                 loaded = (e.NewValue as XElement).Element("Program").Element("Main");
-            }
-            catch {
-                
-            }
-            finally
-            {
-                loaded = (XElement)e.NewValue;
-                (sender as Siemens3DViewer).PreviewFromXElement(loaded, "test" );
-            }
 
-
+            (sender as Siemens3DViewer).PreviewFromXElement((XElement)e.NewValue, "test" );
             
         }
 
