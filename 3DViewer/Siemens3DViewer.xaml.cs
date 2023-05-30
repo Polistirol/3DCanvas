@@ -42,8 +42,6 @@ namespace PrimaPower
         private FromCustomSweepDirectionToArcSweepDirection fromCustomSweepDirectionToArcSweepeDirection = null;
         private Brush _originalColor = null;
 
-     
-
         private Tracer Tracer;
         private Snapshotter Snapshotter;
         
@@ -98,7 +96,7 @@ namespace PrimaPower
 
         private static void OnProgramPathPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
         {
-            (sender as Siemens3DViewer).PreviewFromPath((string)e.NewValue);
+            //(sender as Siemens3DViewer).PreviewFromPath((string)e.NewValue);
         }
 
         private static void OnLoadedXElementPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
