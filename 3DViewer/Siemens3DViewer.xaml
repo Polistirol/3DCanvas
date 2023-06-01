@@ -17,7 +17,7 @@
             <RowDefinition Height="67*"/>
             <RowDefinition Height="90"/>
         </Grid.RowDefinitions>
-        <Canvas x:Name="canvas1" ClipToBounds="True"  Background="#2d2d2d" MouseDown="canvas1_MouseDown" MouseMove="canvas1_MouseMove" MouseWheel="canvas1_MouseWheel" Grid.RowSpan="3" Grid.ColumnSpan="3" />
+        <Canvas x:Name="canvas1" ClipToBounds="True"  Background="#2d2d2d"  MouseDown="canvas1_MouseDown" MouseMove="canvas1_MouseMove" MouseWheel="canvas1_MouseWheel" Grid.RowSpan="3" Grid.ColumnSpan="3" />
         <Canvas x:Name="canvasAxes" Grid.Row="2" Grid.Column="2"   />
 
     </Grid>

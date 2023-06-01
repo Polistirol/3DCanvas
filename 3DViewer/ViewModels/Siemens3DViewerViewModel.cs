@@ -2,109 +2,106 @@
 using ParserLibrary.Entities.Parsers;
 using ParserLibrary.Interfaces;
 using ParserLibrary.Interfaces.Macros;
-using ParserLibrary.Models;
 using ParserLibrary.Models.Media;
+using ParserLibrary.Models;
 using ParserLibrary.Services.Parsers;
 using PrimaPower.Converters;
 using PrimaPower.Resource;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Windows;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
+using static ParserLibrary.Helpers.TechnoHelper;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
+using System.Windows;
 using System.Xml.Linq;
-using static ParserLibrary.Helpers.TechnoHelper;
+using System.Windows.Shapes;
 
-namespace PrimaPower
+namespace PrimaPower.ViewModels
 {
-    /// <summary>
-    /// Logica di interazione per UserControl1.xaml
-    /// </summary>
-    public partial class Siemens3DViewer : UserControl 
+    public class Siemens3DViewerViewModel : BaseViewModel
     {
-
         private List<IBaseEntity> moves;
         public string Filename { get; set; }
-        public bool CanvasInteractionEnabled { get; set; }
-        
-        private Axes Axes = new Axes();
-        public IProgramContext ProgramContext { get; set; }
+        public bool CanvasInteractionEnabled { get; set; } = true;
+        public IBaseEntity SelectedEntity { get; set; }
 
+        public int SelectedEntityLine => SelectedEntity != null ? SelectedEntity.SourceLine : 0;
+
+        public IProgramContext ProgramContext { get; set; }
+        private Axes Axes = new Axes();
         private Point previousCoordinate;
         private Point3D centerRotation = new Point3D(150, 150, 0);
         private From3DTo2DPointConversion from3Dto2DPointConversion = null;
         private FromCustomSweepDirectionToArcSweepDirection fromCustomSweepDirectionToArcSweepeDirection = null;
         private Brush _originalColor = null;
-
         private Tracer Tracer;
         private Snapshotter Snapshotter;
-        
-        public IBaseEntity SelectedEntity { get; set; }
-        public int SelectedEntityLine => SelectedEntity != null ? SelectedEntity.SourceLine : 0;
+        private Canvas canvas1 = new Canvas();
+        private Canvas canvasAxes = new Canvas();
 
         Matrix3D HistoryU = Matrix3D.Identity;
         Matrix3D HistoryUn = Matrix3D.Identity;
-        Matrix3D HistoryAxes = Matrix3D.Identity; 
+        Matrix3D HistoryAxes = Matrix3D.Identity;
         double HistoryZRadius = 1;
 
         #region Actions
-        public Action<Path,int> EntityClicked;
+        public Action<Path, int> EntityClicked;
         public Action<Path> AxisClicked;
         public Action KeyPressed;
         public Action<string> SnapshotTaken;
 
         #endregion
 
-        public Siemens3DViewer()
+        public Siemens3DViewerViewModel()
         {
-            InitializeComponent();
-            System.Threading.Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("en-EN");
             from3Dto2DPointConversion = new From3DTo2DPointConversion();
             fromCustomSweepDirectionToArcSweepeDirection = new FromCustomSweepDirectionToArcSweepDirection();
-            SetCanvasInteractionEnabled(true);
             Tracer = new Tracer();
             Snapshotter = new Snapshotter();
-            Axes.BuildAxes();   
+            Axes.BuildAxes();
         }
 
-        public string ProgramPath
-        {
-            get { return (string)GetValue(ProgramPathProperty); }
-            set {SetValue(ProgramPathProperty, value); }
-        }
+        //public string ProgramPath
+        //{
+        //    get { return (string)GetValue(ProgramPathProperty); }
+        //    set { SetValue(ProgramPathProperty, value); }
+        //}
 
-        public XElement LoadedXElement
-        {
-            get { return (XElement)GetValue(LoadedXElementProperty); }
-            set { SetValue(LoadedXElementProperty, value); }
-        }
+        //public XElement LoadedXElement
+        //{
+        //    get { return (XElement)GetValue(LoadedXElementProperty); }
+        //    set { SetValue(LoadedXElementProperty, value); }
+        //}
 
-        // Using a DependencyProperty as the backing store for ProgramPath.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty ProgramPathProperty =
-            DependencyProperty.RegisterAttached(nameof(ProgramPath), typeof(string), typeof(Siemens3DViewer),
-                new UIPropertyMetadata(string.Empty, OnProgramPathPropertyChanged));
+        //// Using a DependencyProperty as the backing store for ProgramPath.  This enables animation, styling, binding, etc...
+        //public static readonly DependencyProperty ProgramPathProperty =
+        //    DependencyProperty.RegisterAttached(nameof(ProgramPath), typeof(string), typeof(Siemens3DViewer),
+        //        new UIPropertyMetadata(string.Empty, OnProgramPathPropertyChanged));
 
-        public static readonly DependencyProperty LoadedXElementProperty =
-            DependencyProperty.RegisterAttached(nameof(LoadedXElement), typeof(XElement), typeof(Siemens3DViewer),
-                new UIPropertyMetadata(null, OnLoadedXElementPropertyChanged));
+        //public static readonly DependencyProperty LoadedXElementProperty =
+        //    DependencyProperty.RegisterAttached(nameof(LoadedXElement), typeof(XElement), typeof(Siemens3DViewer),
+        //        new UIPropertyMetadata(null, OnLoadedXElementPropertyChanged));
 
-        private static void OnProgramPathPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
-        {
-            (sender as Siemens3DViewer).PreviewFromPath((string)e.NewValue);
-        }
+        //private static void OnProgramPathPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        //{
+        //    //(sender as Siemens3DViewer).PreviewFromPath((string)e.NewValue);
+        //}
 
-        private static void OnLoadedXElementPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
-        {
+        //private static void OnLoadedXElementPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        //{
 
-            (sender as Siemens3DViewer).PreviewFromXElement((XElement)e.NewValue, "test" );
-            
-        }
+        //    (sender as Siemens3DViewer).PreviewFromXElement((XElement)e.NewValue, "test");
+
+        //}
 
         public void PreviewFromPath(string fullName)
         {
@@ -145,7 +142,7 @@ namespace PrimaPower
 
                 centerRotation = ProgramContext.CenterRotationPoint;
 
-                Path[] paths = new Path[moves.Count*2];
+                Path[] paths = new Path[moves.Count * 2];
 
                 foreach (var item in moves)
                 {
@@ -174,7 +171,7 @@ namespace PrimaPower
                             DrawArc(item as ArcMove);
                     }
                 }
-                
+
                 InitialTransform();
 
                 Tracer.SetPathsCollection(canvas1.Children);
@@ -306,12 +303,12 @@ namespace PrimaPower
             BindingOperations.SetBinding(ls, ArcSegment.IsLargeArcProperty, new Binding { Source = arcMove, Path = new PropertyPath("IsLargeArc") });
             BindingOperations.SetBinding(ls, ArcSegment.IsStrokedProperty, new Binding { Source = arcMove, Path = new PropertyPath("IsStroked") });
             BindingOperations.SetBinding(ls, ArcSegment.SweepDirectionProperty, new Binding { Source = arcMove, Path = new PropertyPath("ArcSweepDirection"), Converter = fromCustomSweepDirectionToArcSweepeDirection });
-           
-            
+
+
             pfTmp.Segments.Add(ls);
             PathGeometry geometry = new PathGeometry();
             geometry.Figures.Add(pfTmp);
-            arcMove.GeometryPath= geometry;
+            arcMove.GeometryPath = geometry;
             arcMove.BoundingBox = new BoundingBox(geometry.Bounds.Left, geometry.Bounds.Right, geometry.Bounds.Top, geometry.Bounds.Bottom);
         }
 
@@ -323,7 +320,7 @@ namespace PrimaPower
         {
             PathFigure pfTmp = new PathFigure();
             LineSegment ls = new LineSegment();
- 
+
             pf.Segments.Add(ls);
 
             BindingBase destinationBinding = new Binding { Source = linearMove, Path = new PropertyPath("EndPoint"), Converter = from3Dto2DPointConversion };
@@ -417,7 +414,6 @@ namespace PrimaPower
             Quaternion planeQuat = SetViewPlane(plane);
             U.RotateAt(planeQuat, centerRotation);
             Un.RotateAt(planeQuat, new Point3D(0, 0, 0));
-
             foreach (var item in moves)
             {
                 item.Render(U, Un, false, 1);
@@ -453,7 +449,7 @@ namespace PrimaPower
             {
                 if (!item.IsBeamOn) continue;
                 UpdateBoundingBox(item);
-                var entity = item; 
+                var entity = item;
                 if (double.IsNegativeInfinity(entity.BoundingBox.Left) || double.IsInfinity(entity.BoundingBox.Right) || double.IsNegativeInfinity(entity.BoundingBox.Top) || double.IsInfinity(entity.BoundingBox.Bottom))
                     continue;
 
@@ -486,7 +482,7 @@ namespace PrimaPower
             foreach (var item in moves)
             {
                 item.Render(U, Un, false, 1);
-            }           
+            }
         }
 
         #endregion
@@ -510,8 +506,8 @@ namespace PrimaPower
         }
 
         private void SelectElementFromLineNumber(int lineNumber)
-        {   
-            Path path = canvas1.Children.OfType<Path>().FirstOrDefault(x=> x.Tag != null &&  (x.Tag as IBaseEntity).SourceLine == lineNumber);
+        {
+            Path path = canvas1.Children.OfType<Path>().FirstOrDefault(x => x.Tag != null && (x.Tag as IBaseEntity).SourceLine == lineNumber);
             if (path != null)
             {
                 OnEntityClicked(path);
@@ -539,7 +535,6 @@ namespace PrimaPower
             if (canvas.Name == "canvas1")
                 previousCoordinate = Mouse.GetPosition(canvas1);
         }
-
         private void canvas1_MouseMove(object sender, MouseEventArgs e)
         {
             if (!CanvasInteractionEnabled) return;
@@ -624,7 +619,6 @@ namespace PrimaPower
         private void canvas1_MouseWheel(object sender, MouseWheelEventArgs e)
         {
             if (!CanvasInteractionEnabled) return;
-
             if (moves == null) return;
             double Z = 1;
 
@@ -776,7 +770,7 @@ namespace PrimaPower
             string axePlane = axe.Tag.ToString();
             RotateViewToPlane(axePlane);
             Console.WriteLine($"Axe clicked {axePlane}");
-                
+
             AxisClicked?.Invoke(p);
         }
 
@@ -784,7 +778,7 @@ namespace PrimaPower
         {
             Console.WriteLine($"Entity clicked {p.Tag.ToString()}");
             SelectedEntity = p.Tag as IBaseEntity;
-            EntityClicked?.Invoke(p,SelectedEntityLine);
+            EntityClicked?.Invoke(p, SelectedEntityLine);
         }
 
         public void TestRot()
@@ -802,7 +796,7 @@ namespace PrimaPower
             Slider slider = sender as Slider;
 
 
-           int  sliderValue = (int)slider.Value;
+            int sliderValue = (int)slider.Value;
 
             Tracer.TraceLine((int)slider.Value);
             if (sliderValue > ProgramContext.LastSourceLine)
@@ -814,8 +808,8 @@ namespace PrimaPower
         public void RestartTrace(int fromSourceLine)
         {
             Tracer.RestartTrace(fromSourceLine);
-            
-        } 
+
+        }
 
 
         #endregion
@@ -841,7 +835,7 @@ namespace PrimaPower
 
 
         public void RotateViewToPlane(string plane)
-        {       
+        {
             Matrix3D U = Matrix3D.Identity;
             Matrix3D Un = Matrix3D.Identity;
             Point3D cor = new Point3D(centerRotation.X, centerRotation.Y, centerRotation.Z);
@@ -908,4 +902,7 @@ namespace PrimaPower
 
 
 }
+
+
+
 
