@@ -40,6 +40,7 @@ namespace PrimaPower
         private From3DTo2DPointConversion from3Dto2DPointConversion = null;
         private FromCustomSweepDirectionToArcSweepDirection fromCustomSweepDirectionToArcSweepeDirection = null;
         private Brush _originalColor = null;
+        private Dictionary<Path, Brush> _originalColorDict;
 
         private Tracer Tracer;
         private Snapshotter Snapshotter;
@@ -70,8 +71,10 @@ namespace PrimaPower
             Tracer = new Tracer();
             Snapshotter = new Snapshotter();
             Axes.BuildAxes();   
+            _originalColorDict = new Dictionary<Path, Brush>();
         }
 
+        #region dependencies props
 
         public XElement ProgramXElement
         {
@@ -110,6 +113,28 @@ namespace PrimaPower
         {
             (sender as Siemens3DViewer).DrawProgram((IProgramContext)e.NewValue);
         }
+
+        public int[] SelectedLinesIDs
+        {
+            get { return (int[])GetValue(SelectedLinesIDsProperty);  }
+            set
+            {
+                SetValue(SelectedLinesIDsProperty, value);
+            }
+        }
+
+        // Using a DependencyProperty as the backing store for ProgramPath.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty SelectedLinesIDsProperty =
+            DependencyProperty.RegisterAttached(nameof(SelectedLinesIDs), typeof(int[]), typeof(Siemens3DViewer),
+                new UIPropertyMetadata(null, OnSelectedLinesIDsPropertyChanged));
+
+        private static void OnSelectedLinesIDsPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        {
+            (sender as Siemens3DViewer).DeselectHighlightedPaths();
+            (sender as Siemens3DViewer).SelectElementFromLineNumbers((int[])e.NewValue);
+        }
+
+        #endregion
 
 
         public void DrawProgram(XElement programXElement)
@@ -498,14 +523,40 @@ namespace PrimaPower
                 }
             }
         }
-
-        private void SelectElementFromLineNumber(int lineNumber)
-        {   
-            Path path = canvas1.Children.OfType<Path>().FirstOrDefault(x=> x.Tag != null &&  (x.Tag as IBaseEntity).SourceLine == lineNumber);
-            if (path != null)
+        public void SelectElementFromLineNumbers(int[] lineNumbers)
+        {
+            foreach ( int lineNumber in lineNumbers)
             {
-                OnEntityClicked(path);
+                Path path = canvas1.Children.OfType<Path>().FirstOrDefault(x=> x.Tag != null &&  (x.Tag as IBaseEntity).SourceLine == lineNumber);
+                if (path != null)
+                {
+                    HighlightPath(path);
+                }                
             }
+        }
+
+        public void DeselectHighlightedPaths()
+        {
+            foreach (Path p in _originalColorDict.Keys)
+            {
+
+                RestetPathColor(p);
+
+            }
+            _originalColorDict.Clear();
+        }
+
+        private void HighlightPath(Path p)
+        {
+            _originalColorDict.Add(p, p.Stroke);
+            p.Stroke = Brushes.Yellow;
+            p.StrokeThickness = 5;
+        }
+
+        private void RestetPathColor(Path p)
+        {
+            p.Stroke = _originalColorDict[p];
+            p.StrokeThickness = 1;
         }
 
         private void MouseEnterEntity(object sender, MouseEventArgs e)
@@ -671,12 +722,18 @@ namespace PrimaPower
 
         private void UpdateBoundingBox(IBaseEntity move)
         {
+
+            double xMin = double.PositiveInfinity;
+            double xMax = double.NegativeInfinity;
+            double yMin = double.PositiveInfinity;
+            double yMax = double.NegativeInfinity;
+
             if (move is Macro macro)
             {
-                double xMin = double.PositiveInfinity;
-                double xMax = double.NegativeInfinity;
-                double yMin = double.PositiveInfinity;
-                double yMax = double.NegativeInfinity;
+                //double xMin = double.PositiveInfinity;
+                //double xMax = double.NegativeInfinity;
+                //double yMin = double.PositiveInfinity;
+                //double yMax = double.NegativeInfinity;
 
                 foreach (var item in macro.Movements)
                 {

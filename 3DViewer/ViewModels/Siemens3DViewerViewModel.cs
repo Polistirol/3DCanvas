@@ -34,6 +34,17 @@ namespace PrimaPower.ViewModels
             }
         }
 
+        private int[] _selectedLinesIDs;
+
+        public int[] SelectedLinesIDs
+        {
+            get { return _selectedLinesIDs; }
+            set { 
+                _selectedLinesIDs = value;
+                OnPropertyChanged(nameof(SelectedLinesIDs));    
+            
+            }
+        }
 
 
         public Siemens3DViewerViewModel(SelectedFilesListItemStore selectedFilesListItemStore)

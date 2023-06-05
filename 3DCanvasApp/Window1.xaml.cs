@@ -103,7 +103,7 @@ namespace Canvas3DViewer
             //Viewer3D.PreviewFromPath(Filename);
 
             XElement preload = XElement.Load(Filename, LoadOptions.SetLineInfo);
-            Viewer3D.PreviewFromXElement(preload,Filename);
+            Viewer3D.DrawProgram(preload);
         }
 
         private void txtLine_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
