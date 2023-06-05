@@ -4,7 +4,6 @@ using ParserLibrary.Interfaces;
 using ParserLibrary.Interfaces.Macros;
 using ParserLibrary.Models;
 using ParserLibrary.Models.Media;
-using ParserLibrary.Services.Parsers;
 using PrimaPower.Converters;
 using PrimaPower.Resource;
 using System;
@@ -34,7 +33,7 @@ namespace PrimaPower
         public bool CanvasInteractionEnabled { get; set; }
         
         private Axes Axes = new Axes();
-        public IProgramContext ProgramContext { get; set; }
+        //public IProgramContext ProgramContext { get; set; }
 
         private Point previousCoordinate;
         private Point3D centerRotation = new Point3D(150, 150, 0);
@@ -73,69 +72,60 @@ namespace PrimaPower
             Axes.BuildAxes();   
         }
 
-        public string ProgramPath
-        {
-            get { return (string)GetValue(ProgramPathProperty); }
-            set {SetValue(ProgramPathProperty, value); }
-        }
 
-        public XElement LoadedXElement
+        public XElement ProgramXElement
         {
-            get { return (XElement)GetValue(LoadedXElementProperty); }
-            set { SetValue(LoadedXElementProperty, value); }
+            get { return (XElement)GetValue(ProgramXElementProperty); }
+            set
+            {
+                SetValue(ProgramXElementProperty, value);
+            }
         }
 
         // Using a DependencyProperty as the backing store for ProgramPath.  This enables animation, styling, binding, etc...
-        public static readonly DependencyProperty ProgramPathProperty =
-            DependencyProperty.RegisterAttached(nameof(ProgramPath), typeof(string), typeof(Siemens3DViewer),
-                new UIPropertyMetadata(string.Empty, OnProgramPathPropertyChanged));
+        public static readonly DependencyProperty ProgramXElementProperty =
+            DependencyProperty.RegisterAttached(nameof(ProgramXElement), typeof(XElement), typeof(Siemens3DViewer),
+                new UIPropertyMetadata(null, OnProgramXElementPropertyPropertyChanged));
 
-        public static readonly DependencyProperty LoadedXElementProperty =
-            DependencyProperty.RegisterAttached(nameof(LoadedXElement), typeof(XElement), typeof(Siemens3DViewer),
-                new UIPropertyMetadata(null, OnLoadedXElementPropertyChanged));
-
-        private static void OnProgramPathPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        private static void OnProgramXElementPropertyPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
         {
-            (sender as Siemens3DViewer).PreviewFromPath((string)e.NewValue);
+            (sender as Siemens3DViewer).DrawProgram((XElement)e.NewValue);
         }
 
-        private static void OnLoadedXElementPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
-        {
 
-            (sender as Siemens3DViewer).PreviewFromXElement((XElement)e.NewValue, "test" );
-            
+        public IProgramContext ProgramContext
+        {
+            get { return (IProgramContext)GetValue(ProgramContextProperty); }
+            set { 
+                SetValue(ProgramContextProperty, value); 
+            }
         }
 
-        public void PreviewFromPath(string fullName)
-        {
-            Parser parser = null;
-            var extension = System.IO.Path.GetExtension(fullName).ToLower().Trim();
-            if (extension == ".iso")
-                parser = new Parser(new ParseIso(fullName));
-            else if (extension == ".mpf")
-                parser = new Parser(new ParseMpf(fullName));
-            else if (extension == ".xml")
-                parser = new Parser(new ParseXML(fullName));
-            else
-                MessageBox.Show("File extension invalid");
+        // Using a DependencyProperty as the backing store for ProgramPath.  This enables animation, styling, binding, etc...
+        public static readonly DependencyProperty ProgramContextProperty =
+            DependencyProperty.RegisterAttached(nameof(ProgramContext), typeof(IProgramContext), typeof(Siemens3DViewer),
+                new UIPropertyMetadata(null, OnProgramContextPropertyChanged));
 
-            ProgramContext = parser.GetProgramContext();
-            DrawProgram(fullName);
+        private static void OnProgramContextPropertyChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        {
+            (sender as Siemens3DViewer).DrawProgram((IProgramContext)e.NewValue);
         }
 
-        public void PreviewFromXElement(XElement program, string fullName)
+
+        public void DrawProgram(XElement programXElement)
         {
-            Parser parser = new Parser(new ParseXML(program));
-            ProgramContext = parser.GetProgramContext();
-            DrawProgram(fullName);
+            Parser parser = new Parser(new ParseXML(programXElement));
+            IProgramContext programContext = parser.GetProgramContext();
+            DrawProgram(programContext);
         }
 
-        public void DrawProgram(string fullName)
+        public void DrawProgram(IProgramContext pContext)
         {
+            IProgramContext ProgramContext = pContext;
             ClearCanvas();
             Stopwatch ost = Stopwatch.StartNew();
             ResetHistoryItems();
-            Filename = fullName;
+            Filename = "name";
             try
             {
                 moves = (List<IBaseEntity>)ProgramContext.Moves;
@@ -179,7 +169,7 @@ namespace PrimaPower
 
                 Tracer.SetPathsCollection(canvas1.Children);
 
-                Console.WriteLine($"Program: {System.IO.Path.GetFileName(fullName)} is completed in {ost.ElapsedMilliseconds} ms");
+                Console.WriteLine($"Program: {System.IO.Path.GetFileName(Filename)} is completed in {ost.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)
             {
@@ -830,7 +820,7 @@ namespace PrimaPower
         {
             canvas1.Measure(size);
             canvas1.Arrange(new Rect(size));
-            DrawProgram(programPath);
+            //DrawProgram(programPath); TODO : replace program path str with programContext object
             Snapshotter.SaveCanvasSnapshot(canvas1, imagePath, size);
             SnapshotTaken?.Invoke(imagePath);
         }
