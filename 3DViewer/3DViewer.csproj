@@ -33,9 +33,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Laser3DControls">
-      <HintPath>C:\FPSuite\Laser3DControls.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -52,6 +49,8 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Resource\PathSelectionHelper.cs" />
+    <Compile Include="Stores\SelectedViewerElementsStore.cs" />
     <Compile Include="ViewModels\BaseViewModel.cs" />
     <Compile Include="ViewModels\Siemens3DViewerViewModel.cs" />
     <Page Include="Siemens3DViewer.xaml">

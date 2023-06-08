@@ -6,6 +6,7 @@ using ParserLibrary.Models;
 using ParserLibrary.Models.Media;
 using PrimaPower.Converters;
 using PrimaPower.Resource;
+using PrimaPower.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -28,25 +29,34 @@ namespace PrimaPower
     public partial class Siemens3DViewer : UserControl 
     {
 
-        private List<IBaseEntity> moves;
+        
         public string Filename { get; set; }
         public bool CanvasInteractionEnabled { get; set; }
-        
-        private Axes Axes = new Axes();
-        //public IProgramContext ProgramContext { get; set; }
 
+        public Path ClickedPath { get; set; }
+
+        public IBaseEntity ClickedEntity => ClickedPath != null ? (IBaseEntity)ClickedPath.Tag : null;
+               
+        public int ClickedEntitySourceLine => ClickedEntity != null ? ClickedEntity.SourceLine : 0;
+
+
+        private Axes Axes = new Axes();
+        private List<IBaseEntity> moves;
         private Point previousCoordinate;
         private Point3D centerRotation = new Point3D(150, 150, 0);
         private From3DTo2DPointConversion from3Dto2DPointConversion = null;
         private FromCustomSweepDirectionToArcSweepDirection fromCustomSweepDirectionToArcSweepeDirection = null;
         private Brush _originalColor = null;
+        private Brush _originalClickedColor = null;
+        private double _originalThickness = 1;
         private Dictionary<Path, Brush> _originalColorDict;
 
         private Tracer Tracer;
         private Snapshotter Snapshotter;
         
-        public IBaseEntity SelectedEntity { get; set; }
-        public int SelectedEntityLine => SelectedEntity != null ? SelectedEntity.SourceLine : 0;
+        
+        
+
 
         Matrix3D HistoryU = Matrix3D.Identity;
         Matrix3D HistoryUn = Matrix3D.Identity;
@@ -75,6 +85,11 @@ namespace PrimaPower
         }
 
         #region dependencies props
+
+
+
+
+
 
         public XElement ProgramXElement
         {
@@ -135,7 +150,6 @@ namespace PrimaPower
         }
 
         #endregion
-
 
         public void DrawProgram(XElement programXElement)
         {
@@ -508,9 +522,13 @@ namespace PrimaPower
 
         #region Mouse Interaction
 
-        private void MouseClickEntity(object sender, MouseButtonEventArgs e)
+        private void MouseClickPath(object sender, MouseButtonEventArgs e)
         {
-            var p = ((Path)sender);
+            Path p = ((Path)sender);
+
+            //ClickedPath.Stroke = _originalColorDict[p];
+
+            
             if (p.Tag != null)
             {
                 if (Axes.Contains(p.Tag as IBaseEntity))
@@ -519,7 +537,15 @@ namespace PrimaPower
                 }
                 else
                 {
-                    OnEntityClicked(p);
+                    Console.WriteLine($"Entity clicked {p.Tag.ToString()}");
+                    DeselectHighlightedPaths();
+                    ClickedPath = p;
+                    HighlightPath(p); 
+
+                    (this.DataContext as Siemens3DViewerViewModel).OnClickedPath(ClickedPath, ClickedEntity, ClickedEntitySourceLine);
+                    
+                    EntityClicked?.Invoke(p, ClickedEntitySourceLine);
+
                 }
             }
         }
@@ -539,37 +565,53 @@ namespace PrimaPower
         {
             foreach (Path p in _originalColorDict.Keys)
             {
-
-                RestetPathColor(p);
-
+                ResetPathColor(p);
             }
             _originalColorDict.Clear();
         }
 
         private void HighlightPath(Path p)
         {
-            _originalColorDict.Add(p, p.Stroke);
+            Brush originalColor = ColorsHelper.GetLineColor((p.Tag as IBaseEntity).LineColor);
+            _originalColorDict[p]= originalColor;
             p.Stroke = Brushes.Yellow;
-            p.StrokeThickness = 5;
+            p.StrokeThickness = 3;
         }
 
-        private void RestetPathColor(Path p)
+        private void ResetPathColor(Path p)
         {
-            p.Stroke = _originalColorDict[p];
-            p.StrokeThickness = 1;
+                p.Stroke = _originalColorDict[p];
+                p.StrokeThickness = 1;
         }
 
         private void MouseEnterEntity(object sender, MouseEventArgs e)
         {
-            _originalColor = ((Path)sender).Stroke;
-            ((Path)sender).Stroke = Brushes.Yellow;
-            ((Path)sender).StrokeThickness = 5;
+            Path p = sender as Path;
+            HighlightPath(p);
+            //_originalColorDict[p] = p.Stroke;
+            //_originalColor = p.Stroke;
+            //_originalThickness = p.StrokeThickness;
+            //p.Stroke = Brushes.Yellow;
+            //p.StrokeThickness = 3;
+
+
         }
 
         private void MouseLeaveEntity(object sender, MouseEventArgs e)
-        {
-            ((Path)sender).Stroke = _originalColor;
-            ((Path)sender).StrokeThickness = 1;
+        {   Path p = sender as Path;
+
+            if (ClickedPath == p)
+            {
+                return;
+            }
+            
+            ResetPathColor(p);
+            //if (_originalColorDict.ContainsKey(p) == false)
+            //{
+            //p.Stroke = _originalColor;
+            //p.StrokeThickness = _originalThickness;
+
+            //}
         }
 
         private void canvas1_MouseDown(object sender, MouseButtonEventArgs e)
@@ -791,13 +833,13 @@ namespace PrimaPower
         {
             if (CanvasInteractionEnabled)
             {
-                p.MouseDown += MouseClickEntity;
+                p.MouseDown += MouseClickPath;
                 p.MouseEnter += MouseEnterEntity;
                 p.MouseLeave += MouseLeaveEntity;
             }
             else
             {
-                p.MouseDown -= MouseClickEntity;
+                p.MouseDown -= MouseClickPath;
                 p.MouseEnter -= MouseEnterEntity;
                 p.MouseLeave -= MouseLeaveEntity;
             }
@@ -827,12 +869,7 @@ namespace PrimaPower
             AxisClicked?.Invoke(p);
         }
 
-        private void OnEntityClicked(Path p)
-        {
-            Console.WriteLine($"Entity clicked {p.Tag.ToString()}");
-            SelectedEntity = p.Tag as IBaseEntity;
-            EntityClicked?.Invoke(p,SelectedEntityLine);
-        }
+ 
 
         public void TestRot()
         {

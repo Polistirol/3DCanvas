@@ -1,20 +1,33 @@
-﻿using FP.FPSuite.UI.Controls.TulusForLaser3D.Stores;
-using ParserLib;
+﻿using ParserLib;
 using ParserLibrary.Entities.Parsers;
 using ParserLibrary.Interfaces;
 using ParserLibrary.Services.Parsers;
+using PrimaPower.Stores;
 using System.Windows;
+using System.Windows.Shapes;
 using System.Xml.Linq;
 
 namespace PrimaPower.ViewModels
 {
     public class Siemens3DViewerViewModel : BaseViewModel
     {
+
         public string FilePath { get; set; }
 
-        private readonly SelectedFilesListItemStore _selectedFilesListItemStore;
-
+        private IBaseEntity _clickedEntity;
+        private int _clickedEntityLineInfo;
+        private Path _clickedPath { get; set; }
         
+
+        private SelectedViewerElementsStore _selectedViewerElementsStore;
+
+        public SelectedViewerElementsStore SelectedViewerElementsStore
+        {
+            get { return _selectedViewerElementsStore; }
+        }
+
+
+
         private IProgramContext programContext;
         public IProgramContext ProgramContext
         {
@@ -47,33 +60,34 @@ namespace PrimaPower.ViewModels
         }
 
 
-        public Siemens3DViewerViewModel(SelectedFilesListItemStore selectedFilesListItemStore)
+        public Siemens3DViewerViewModel(SelectedViewerElementsStore selectedViewerElementsStore)
         {
-            _selectedFilesListItemStore = selectedFilesListItemStore;
-            _selectedFilesListItemStore.SelectedItemChanged += OnSelectedItemChanged;
+            _selectedViewerElementsStore = selectedViewerElementsStore;
+
+            
         }
 
-        private void OnSelectedItemChanged()
+        public void UpateSelectedProgram(string filepath, XElement loadedXElement)
         {
-            FilePath = _selectedFilesListItemStore.SelectedItem.Path;
-            ProgramXElement = _selectedFilesListItemStore.LoadedXElement;
-            BuildProgramContext();
+            FilePath = filepath;
+            ProgramXElement = loadedXElement;
+            //BuildProgramContext(loadedXElement);  //commented because unusued atm
         }
 
         /// <summary>
         /// Updates the ProgramContext from the selected program XElement
         /// </summary>
-        public void BuildProgramContext()
+        public void BuildProgramContext(XElement loadedXElement)
         {
-            var parser = GetParser(_selectedFilesListItemStore.LoadedXElement);
+            var parser = GetParser(loadedXElement);
             ProgramContext = parser.GetProgramContext();
         }
 
         private Parser GetParser(XElement programXElement)
         {
-            return new Parser(new ParseXML(programXElement));
-            
+            return new Parser(new ParseXML(programXElement));  
         }
+
         private Parser GetParser(string filePath)
         {
             Parser parser = null;
@@ -88,6 +102,17 @@ namespace PrimaPower.ViewModels
                 MessageBox.Show("File extension invalid");
             return parser;
         }
+
+        public void OnClickedPath(Path clickedPath , IBaseEntity clickedPathEntity , int clickedEntitySourceLine )
+        {
+            _clickedPath = clickedPath;
+            _clickedEntity = clickedPathEntity;
+            _clickedEntityLineInfo = clickedEntitySourceLine;
+
+            _selectedViewerElementsStore.ViewerElementClicked(_clickedPath, _clickedEntity, _clickedEntityLineInfo);
+        }
+
+
     }
 
 

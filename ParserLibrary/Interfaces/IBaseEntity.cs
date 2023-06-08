@@ -18,6 +18,8 @@ namespace ParserLibrary.Interfaces
         string OriginalLine { get; set; }
 
         object Tag { get; set; }
+
+      
         
     }
 }
